@@ -1,0 +1,11 @@
+# Custom Domestic Appliances Dataset
+path: C:/Users/acer/Pictures/IQ/Model/dataset
+train: images/train
+val: images/val
+
+names:
+  0: AC
+  1: washing machine
+  2: closet
+  3: water purifier
+  4: cot
