@@ -274,6 +274,30 @@ export function getSummary() {
   };
 }
 
+const PRODUCT_ALIASES: Record<string, string[]> = {
+  washer: ["washing machine", "washer", "front load", "top load", "laundry", "washer-dryer"],
+  ac: ["air conditioner", "ac", "split ac", "inverter ac", "cooler", "hvac"],
+  purifier: ["water purifier", "water filter", "ro purifier", "uv purifier", "aquaguard", "pureit", "kent", "filter"],
+  closet: ["closet", "wardrobe", "cupboard", "almirah", "armoire", "cabinet"],
+  cot: ["cot", "bed", "mattress", "bedstead", "bunk"],
+  refrigerator: ["refrigerator", "fridge", "freezer", "deep freezer"],
+  tv: ["television", "tv", "smart tv", "display", "monitor"],
+  laptop: ["laptop", "notebook", "macbook", "thinkpad", "computer"],
+  microwave: ["microwave", "oven", "microwave oven", "otg"],
+};
+
+function matchesAlias(strA: string, strB: string): boolean {
+  const a = strA.toLowerCase();
+  const b = strB.toLowerCase();
+  if (a.includes(b) || b.includes(a)) return true;
+  for (const group of Object.values(PRODUCT_ALIASES)) {
+    const aMatch = group.some((term) => a.includes(term));
+    const bMatch = group.some((term) => b.includes(term));
+    if (aMatch && bMatch) return true;
+  }
+  return false;
+}
+
 export function findBestMatches(
   identified: ProductIdentification,
 ): Passport[] {
@@ -309,15 +333,22 @@ export function findBestMatches(
       if (idBrand && pBrand && (idBrand === pBrand || pBrand.includes(idBrand) || idBrand.includes(pBrand))) {
         score += 0.15;
       }
-      if (idCategory && pCategory && (idCategory === pCategory || pCategory.includes(idCategory) || idCategory.includes(pCategory))) {
+
+      const categoryMatches = Boolean(
+        idCategory && pCategory && (idCategory === pCategory || pCategory.includes(idCategory) || idCategory.includes(pCategory))
+      );
+      const formFactorMatches = matchesAlias(idProduct, pProduct);
+
+      if (categoryMatches) {
         score += 0.10;
-      } else if (pProduct.includes(idProduct) || idProduct.includes(pProduct)) {
-        score += 0.10;
+      }
+      if (formFactorMatches) {
+        score += 0.15;
       }
 
       // If YOLO visual classification matched category/product without model, factor in detector confidence
-      if (!idBrand && !idModel && (idCategory === pCategory || pProduct.includes(idProduct))) {
-        score = Math.max(score, Math.round(identified.confidence * 0.8 * 100) / 100);
+      if (!idBrand && !idModel && (categoryMatches || formFactorMatches)) {
+        score = Math.max(score, Math.round(identified.confidence * 0.85 * 100) / 100);
       }
 
       return { passport, score: Math.min(score, 0.99) };
