@@ -30,3 +30,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# YOLO temporary evaluation runs
+runs/
+Model/runs/custom_appliances/val_batch*
+Model/runs/custom_appliances/train_batch*

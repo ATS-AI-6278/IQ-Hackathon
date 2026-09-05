@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from contextlib import asynccontextmanager
 from .ocr import RAPIDOCR_AVAILABLE, TESSERACT_AVAILABLE, warmup_ocr
-from .detector import detect_product_from_image, get_yolo_model, warmup_yolo
+from .detector import detect_product_from_image, get_yolo_model, get_custom_yolo_model, warmup_yolo
 from .extractor import extract_products_from_image, choose_vision_model, get_available_ollama_models
 
 
@@ -66,6 +66,7 @@ def get_service_status():
     """Live status of OCR, Vision model, and Product detection."""
     ollama_models = get_available_ollama_models()
     vision_model = choose_vision_model()
+    custom_model = get_custom_yolo_model()
     yolo_model = get_yolo_model()
 
     ocr_engine_name = "RapidOCR (ONNX)" if RAPIDOCR_AVAILABLE else ("Tesseract" if TESSERACT_AVAILABLE else "Regex/Heuristic")
@@ -74,8 +75,13 @@ def get_service_status():
     vision_status = "connected" if vision_model else ("pending" if len(ollama_models) > 0 else "offline")
     vision_detail = f"Ollama model: {vision_model}" if vision_model else ("Ollama running (no vision model pulled)" if ollama_models else "Ollama offline (using smart heuristic fallback)")
 
-    yolo_status = "connected" if yolo_model is not None else "degraded"
-    yolo_detail = "YOLO appliance detection ready (yolo26n.pt)" if yolo_model is not None else "Model file missing or PyTorch error"
+    yolo_status = "connected" if (custom_model is not None or yolo_model is not None) else "degraded"
+    details = []
+    if custom_model:
+        details.append("Fine-tuned Custom Appliances")
+    if yolo_model:
+        details.append("COCO Foundation")
+    yolo_detail = f"Active: {' + '.join(details)}" if details else "Model file missing or PyTorch error"
 
     return {
         "backend": {
