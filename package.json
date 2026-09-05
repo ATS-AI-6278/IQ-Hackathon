@@ -10,6 +10,8 @@
     "build": "pnpm -r --if-present run build",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test:ai": "python apps/ai-service/test_ai.py",
+    "test:suite": "python tests/test_api_suite.py",
+    "eval:model": "python Model/evaluate_model.py",
     "start": "pnpm --filter @workspace/api-server run start"
   },
   "devDependencies": {

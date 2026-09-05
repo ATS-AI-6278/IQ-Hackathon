@@ -27,14 +27,21 @@ c:\Users\acer\Pictures\IQ\
 │   └── ai-service/              # Python AI / ML microservice & CLI bridge
 │       ├── app/
 │       │   ├── main.py          # FastAPI application (/analyze-document, /identify-product, /status)
-│       │   ├── detector.py      # YOLO appliance detector + Qwen2.5-VL fallback
+│       │   ├── detector.py      # Dual-engine YOLO (custom + COCO) + Qwen-VL fallback
 │       │   ├── extractor.py     # Document understanding & anti-hallucination selection
 │       │   ├── ocr.py           # RapidOCR (ONNX) + Tesseract text engine
 │       │   └── runner.py        # CLI execution bridge
 │       ├── models/
-│       │   └── yolo26n.pt       # YOLO appliance detection weights
+│       │   ├── custom_appliances.pt # Fine-tuned YOLO (98.1% mAP@50 on AC, Washer, Closet, Purifier, Cot)
+│       │   └── yolo26n.pt       # COCO Foundation YOLO weights
 │       ├── requirements.txt     # Python dependencies
 │       └── test_ai.py           # AI test suite
+│
+├── Model/                       # Custom YOLO Training & Dataset Pipeline
+│   ├── dataset/                 # 292 unified & clamped 5-class annotated dataset
+│   ├── prepare_dataset.py       # Dataset stratification and verification
+│   ├── train_yolo.py            # Automated training script (25 epochs, 98.1% mAP)
+│   └── evaluate_model.py        # Validation split & live sample evaluator
 │
 ├── packages/
 │   ├── api-spec/                # OpenAPI 3.1 schema specification
@@ -44,6 +51,8 @@ c:\Users\acer\Pictures\IQ\
 └── samples/                     # Test invoices, warranty cards, and appliance photos
 ```
 
+> 📖 **Complete Technical Documentation**: See [PROJECT_DOCUMENTATION.md](file:///c:/Users/acer/Pictures/IQ/PROJECT_DOCUMENTATION.md) for full architecture specs, model evaluation metrics, and hackathon evaluation guides.
+
 ---
 
 ## Core Capabilities & AI Workflows
@@ -52,18 +61,19 @@ c:\Users\acer\Pictures\IQ\
    - Accepts uploaded invoices, receipts, and warranty cards (JPG, PNG, PDF).
    - Preprocesses images with contrast enhancement, unsharp masking, and LANCZOS upscaling.
    - Extracts text via RapidOCR (ONNX) or Tesseract.
-   - Applies deep document understanding via Qwen2.5-VL / Ollama with strict anti-hallucination and checkbox selection rules.
+   - Applies deep document understanding via Qwen2.5-VL / Ollama with strict anti-hallucination rules.
    - Gracefully falls back to high-fidelity regex/heuristic extraction if Ollama is offline.
    - Normalizes purchase dates, prices, currencies, and separates multi-product documents.
 
 2. **Physical Product Identification (`/api/product/identify`)**:
-   - Processes photos taken with device camera or uploaded.
-   - Runs YOLO (`models/yolo26n.pt`) detection to identify household appliances (refrigerator, TV, microwave, oven, laptop, etc.).
-   - Employs Qwen2.5-VL vision semantic fallback if YOLO detects no candidate.
-   - Generates normalized bounding box coordinates and extracts visual features.
+   - Processes photos taken with mobile camera or uploaded.
+   - Runs **fine-tuned custom YOLO** (`models/custom_appliances.pt`) for specialized household items (**Air Conditioner, Washing Machine, Closet / Wardrobe, Water Purifier, Cot / Bed**) at **98.1% mAP@50** and **<100ms CPU latency**.
+   - Falls back to general COCO YOLO (`models/yolo26n.pt`) for electronics (Laptop, TV, Refrigerator, Microwave, Smartphone).
+   - Employs bounded Qwen2.5-VL vision semantic fallback if neither YOLO detects a candidate.
+   - Generates normalized bounding box coordinates and authentic visual features without hallucination.
 
 3. **Product Matching & Linking (`/api/product/match` & `/api/passport/:id/link-product`)**:
-   - Compares detected physical attributes (brand, model, category, serial number) against existing passports in the registry.
+   - Compares detected physical attributes against existing passports with semantic product alias mapping (`washer` <-> `washing machine`, `ac` <-> `air conditioner`, `almirah` <-> `closet`).
    - Computes weighted match confidence scores and links physical scans to source evidence.
 
 4. **Service Health Monitoring (`/api/system/status`)**:
