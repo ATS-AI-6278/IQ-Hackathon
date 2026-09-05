@@ -1,0 +1,19 @@
+{
+  "name": "verid-digital-product-passport",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter \"@workspace/*\" --parallel run dev",
+    "dev:web": "pnpm --filter @workspace/digital-product-passport run dev",
+    "dev:api": "pnpm --filter @workspace/api-server run dev",
+    "dev:ai": "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir apps/ai-service",
+    "build": "pnpm -r --if-present run build",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test:ai": "python apps/ai-service/test_ai.py",
+    "start": "pnpm --filter @workspace/api-server run start"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6",
+    "typescript": "~5.9.3"
+  }
+}

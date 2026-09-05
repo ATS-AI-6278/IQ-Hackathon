@@ -1,0 +1,434 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: passports
+    description: Digital product passport operations
+  - name: products
+    description: Physical product identification and matching
+  - name: activity
+    description: Passport activity feed
+  - name: system
+    description: System status operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /passports:
+    get:
+      operationId: listPassports
+      tags: [passports]
+      summary: List digital product passports
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Passport list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Passport"
+  /passport/create:
+    post:
+      operationId: createPassport
+      tags: [passports]
+      summary: Create a passport from reviewed product information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PassportInput"
+      responses:
+        "201":
+          description: Passport created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Passport"
+  /passport/{passportId}:
+    get:
+      operationId: getPassport
+      tags: [passports]
+      summary: Get a passport by ID
+      parameters:
+        - $ref: "#/components/parameters/PassportId"
+      responses:
+        "200":
+          description: Passport
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Passport"
+        "404":
+          description: Passport not found
+    patch:
+      operationId: updatePassport
+      tags: [passports]
+      summary: Update passport information
+      parameters:
+        - $ref: "#/components/parameters/PassportId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PassportUpdate"
+      responses:
+        "200":
+          description: Updated passport
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Passport"
+  /passport/analyze-document:
+    post:
+      operationId: analyzeDocument
+      tags: [passports]
+      summary: Analyze a product document
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentAnalysisInput"
+      responses:
+        "200":
+          description: Extracted product information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentAnalysis"
+  /product/identify:
+    post:
+      operationId: identifyProduct
+      tags: [products]
+      summary: Identify a physical product from an image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductIdentificationInput"
+      responses:
+        "200":
+          description: Identified product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductIdentification"
+  /product/match:
+    post:
+      operationId: matchProduct
+      tags: [products]
+      summary: Find matching passports for an identified product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductMatchInput"
+      responses:
+        "200":
+          description: Possible passport matches
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductMatchResponse"
+  /passports/{passportId}/link-product:
+    post:
+      operationId: linkProduct
+      tags: [products]
+      summary: Link a physical product image to a passport
+      parameters:
+        - $ref: "#/components/parameters/PassportId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductLinkInput"
+      responses:
+        "200":
+          description: Linked passport
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Passport"
+  /activity:
+    get:
+      operationId: listActivity
+      tags: [activity]
+      summary: List recent activity
+      responses:
+        "200":
+          description: Activity list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [passports]
+      summary: Get dashboard summary metrics
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /system/status:
+    get:
+      operationId: getSystemStatus
+      tags: [system]
+      summary: Get AI and backend service status
+      responses:
+        "200":
+          description: System status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStatus"
+components:
+  parameters:
+    PassportId:
+      name: passportId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Passport:
+      type: object
+      required:
+        - passportId
+        - product
+        - brand
+        - model
+        - serialNumber
+        - category
+        - documentType
+        - verificationStatus
+        - createdAt
+        - updatedAt
+      properties:
+        passportId: { type: string }
+        product: { type: string }
+        brand: { type: string }
+        model: { type: string }
+        serialNumber: { type: string }
+        category: { type: string }
+        documentType: { type: string }
+        purchaseDate: { type: ["string", "null"] }
+        purchasePrice: { type: ["number", "null"] }
+        currency: { type: ["string", "null"] }
+        warranty: { type: ["string", "null"] }
+        seller: { type: ["string", "null"] }
+        customerName: { type: ["string", "null"] }
+        orderId: { type: ["string", "null"] }
+        invoiceNumber: { type: ["string", "null"] }
+        sourceDocument: { type: ["string", "null"] }
+        physicalProductImage: { type: ["string", "null"] }
+        physicalScanDate: { type: ["string", "null"] }
+        matchConfidence: { type: ["number", "null"] }
+        verificationStatus: { type: string, enum: [pending, verified] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    PassportInput:
+      type: object
+      required: [product, brand, model, serialNumber, category, documentType]
+      properties:
+        product: { type: string }
+        brand: { type: string }
+        model: { type: string }
+        serialNumber: { type: string }
+        category: { type: string }
+        documentType: { type: string }
+        purchaseDate: { type: ["string", "null"] }
+        purchasePrice: { type: ["number", "null"] }
+        currency: { type: ["string", "null"] }
+        warranty: { type: ["string", "null"] }
+        seller: { type: ["string", "null"] }
+        customerName: { type: ["string", "null"] }
+        orderId: { type: ["string", "null"] }
+        invoiceNumber: { type: ["string", "null"] }
+        sourceDocument: { type: ["string", "null"] }
+    PassportUpdate:
+      type: object
+      properties:
+        product: { type: string }
+        brand: { type: string }
+        model: { type: string }
+        serialNumber: { type: string }
+        category: { type: string }
+        documentType: { type: string }
+        purchaseDate: { type: ["string", "null"] }
+        purchasePrice: { type: ["number", "null"] }
+        currency: { type: ["string", "null"] }
+        warranty: { type: ["string", "null"] }
+        seller: { type: ["string", "null"] }
+        customerName: { type: ["string", "null"] }
+        orderId: { type: ["string", "null"] }
+        invoiceNumber: { type: ["string", "null"] }
+    DocumentAnalysisInput:
+      type: object
+      required: [fileName, fileType]
+      properties:
+        fileName: { type: string }
+        fileType: { type: string }
+        content: { type: ["string", "null"] }
+    DetectedProduct:
+      type: object
+      required: [product, brand, model, serialNumber, category, selected, evidence]
+      properties:
+        product: { type: string }
+        brand: { type: string }
+        model: { type: string }
+        serialNumber: { type: string }
+        category: { type: string }
+        selected: { type: boolean }
+        evidence: { type: string }
+    DocumentAnalysis:
+      type: object
+      required: [documentType, products]
+      properties:
+        documentType: { type: string }
+        products:
+          type: array
+          items: { $ref: "#/components/schemas/DetectedProduct" }
+        extractedFields:
+          type: object
+          additionalProperties: { type: ["string", "number", "null"] }
+    ProductIdentificationInput:
+      type: object
+      required: [image]
+      properties:
+        image: { type: string }
+    ProductIdentification:
+      type: object
+      required: [detectedProduct, category, brand, model, serialNumber, confidence]
+      properties:
+        detectedProduct: { type: string }
+        category: { type: string }
+        brand: { type: string }
+        model: { type: string }
+        serialNumber: { type: string }
+        confidence: { type: number }
+        boundingBox:
+          type: array
+          items: { type: number }
+        visualFeatures:
+          type: array
+          items: { type: string }
+    ProductMatchInput:
+      type: object
+      required: [detectedProduct]
+      properties:
+        detectedProduct:
+          $ref: "#/components/schemas/ProductIdentification"
+    ProductMatch:
+      type: object
+      required: [passportId, matchScore, confidence, reason, passport]
+      properties:
+        passportId: { type: string }
+        matchScore: { type: number }
+        confidence: { type: string, enum: [high, medium, low] }
+        reason:
+          type: array
+          items: { type: string }
+        passport:
+          $ref: "#/components/schemas/Passport"
+    ProductMatchResponse:
+      type: object
+      required: [matches]
+      properties:
+        matches:
+          type: array
+          items: { $ref: "#/components/schemas/ProductMatch" }
+    ProductLinkInput:
+      type: object
+      required: [image, confidence]
+      properties:
+        image: { type: string }
+        confidence: { type: number }
+        scanDate: { type: string }
+    Activity:
+      type: object
+      required: [id, type, title, description, timestamp]
+      properties:
+        id: { type: string }
+        type: { type: string }
+        title: { type: string }
+        description: { type: string }
+        timestamp: { type: string }
+        passportId: { type: ["string", "null"] }
+    DashboardSummary:
+      type: object
+      required: [totalPassports, productsScanned, documentsProcessed, successfullyLinked]
+      properties:
+        totalPassports: { type: number }
+        productsScanned: { type: number }
+        documentsProcessed: { type: number }
+        successfullyLinked: { type: number }
+    ServiceStatus:
+      type: object
+      required: [name, status, detail]
+      properties:
+        name: { type: string }
+        status: { type: string, enum: [connected, degraded, unavailable] }
+        detail: { type: string }
+    SystemStatus:
+      type: object
+      required: [backend, services]
+      properties:
+        backend:
+          $ref: "#/components/schemas/ServiceStatus"
+        services:
+          type: array
+          items: { $ref: "#/components/schemas/ServiceStatus" }
+
