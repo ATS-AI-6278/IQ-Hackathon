@@ -17,8 +17,8 @@ sys.path.insert(0, str(BASE_DIR))
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(line_buffering=True)
 
-from app.ocr import process_image, RAPIDOCR_AVAILABLE, TESSERACT_AVAILABLE
-from app.detector import detect_product_from_image, run_yolo, load_image_cv2, get_yolo_model
+from app.ocr import process_image, RAPIDOCR_AVAILABLE, TESSERACT_AVAILABLE, warmup_ocr
+from app.detector import detect_product_from_image, run_yolo, load_image_cv2, get_yolo_model, warmup_yolo
 from app.extractor import extract_products_from_image, choose_vision_model, get_available_ollama_models
 
 SAMPLES_DIR = BASE_DIR.parent.parent / "samples"
@@ -44,6 +44,13 @@ def audit_models():
     vision_model = choose_vision_model()
     print(f"4. Ollama Vision Models: {ollama_models}")
     print(f"   Selected Vision Model: {vision_model or 'None (Offline Heuristic Fallback Active)'}")
+
+    # Run Startup Pre-warm
+    print("\n[*] RUNNING SYSTEM PRE-WARMING (Cold -> Warm Transition)")
+    tw0 = time.time()
+    warmup_yolo()
+    warmup_ocr()
+    print(f"   Pre-warm completed in {(time.time() - tw0)*1000:.1f}ms")
 
     # 2. Test YOLO Model on All Sample Images
     print("\n[2] YOLO OBJECT DETECTION INFERENCE AUDIT")

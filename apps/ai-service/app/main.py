@@ -10,14 +10,31 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from .ocr import RAPIDOCR_AVAILABLE, TESSERACT_AVAILABLE
-from .detector import detect_product_from_image, get_yolo_model
+from contextlib import asynccontextmanager
+from .ocr import RAPIDOCR_AVAILABLE, TESSERACT_AVAILABLE, warmup_ocr
+from .detector import detect_product_from_image, get_yolo_model, warmup_yolo
 from .extractor import extract_products_from_image, choose_vision_model, get_available_ollama_models
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Pre-warms deep learning models (YOLO & OCR) at server boot."""
+    try:
+        warmup_yolo()
+    except Exception as e:
+        print(f"YOLO pre-warm warning: {e}")
+    try:
+        warmup_ocr()
+    except Exception as e:
+        print(f"OCR pre-warm warning: {e}")
+    yield
+
 
 app = FastAPI(
     title="Verid Product Passport AI Engine",
     version="1.0.0",
     description="Microservice providing YOLO appliance detection, RapidOCR text extraction, and Qwen2.5-VL document understanding.",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -74,7 +91,7 @@ def get_service_status():
             },
             {
                 "name": "Vision model",
-                "status": "connected" if vision_status in ["connected", "pending"] else "connected", # Keep UI clean
+                "status": vision_status,
                 "detail": vision_detail,
             },
             {

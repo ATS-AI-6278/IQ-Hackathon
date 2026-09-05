@@ -271,15 +271,53 @@ export function getSummary() {
 export function findBestMatches(
   identified: ProductIdentification,
 ): Passport[] {
+  if (
+    !identified.detectedProduct ||
+    identified.detectedProduct === "Unidentified Product" ||
+    identified.confidence === 0
+  ) {
+    return [];
+  }
+
+  const idBrand = identified.brand?.trim().toLowerCase() || "";
+  const idModel = identified.model?.trim().toLowerCase() || "";
+  const idCategory = identified.category?.trim().toLowerCase() || "";
+  const idSerial = identified.serialNumber?.trim().toLowerCase() || "";
+  const idProduct = identified.detectedProduct?.trim().toLowerCase() || "";
+
   const ranked = passports
     .map((passport) => {
-      let score = 0.42;
-      if (passport.brand.toLowerCase() === identified.brand.toLowerCase()) score += 0.26;
-      if (passport.model.toLowerCase() === identified.model.toLowerCase()) score += 0.22;
-      if (passport.category.toLowerCase() === identified.category.toLowerCase()) score += 0.06;
-      if (passport.serialNumber.toLowerCase() === identified.serialNumber.toLowerCase()) score += 0.04;
+      let score = 0;
+      const pBrand = passport.brand.toLowerCase();
+      const pModel = passport.model.toLowerCase();
+      const pCategory = passport.category.toLowerCase();
+      const pSerial = passport.serialNumber.toLowerCase();
+      const pProduct = passport.product.toLowerCase();
+
+      if (idSerial && pSerial && idSerial === pSerial) {
+        score += 0.45;
+      }
+      if (idModel && pModel && (idModel === pModel || pModel.includes(idModel) || idModel.includes(pModel))) {
+        score += 0.30;
+      }
+      if (idBrand && pBrand && (idBrand === pBrand || pBrand.includes(idBrand) || idBrand.includes(pBrand))) {
+        score += 0.15;
+      }
+      if (idCategory && pCategory && (idCategory === pCategory || pCategory.includes(idCategory) || idCategory.includes(pCategory))) {
+        score += 0.10;
+      } else if (pProduct.includes(idProduct) || idProduct.includes(pProduct)) {
+        score += 0.10;
+      }
+
+      // If YOLO visual classification matched category/product without model, factor in detector confidence
+      if (!idBrand && !idModel && (idCategory === pCategory || pProduct.includes(idProduct))) {
+        score = Math.max(score, Math.round(identified.confidence * 0.8 * 100) / 100);
+      }
+
       return { passport, score: Math.min(score, 0.99) };
     })
+    .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score);
+
   return ranked.slice(0, 3).map(({ passport }) => passport);
 }

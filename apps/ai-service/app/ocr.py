@@ -72,6 +72,26 @@ except Exception:
     RAPIDOCR_AVAILABLE = False
 
 
+import hashlib
+
+# ---------------------------------------------------------------------------
+# In-memory OCR Result Cache
+# ---------------------------------------------------------------------------
+_ocr_cache: dict[str, dict] = {}
+MAX_CACHE_SIZE = 64
+
+
+def warmup_ocr():
+    """Pre-warms the RapidOCR ONNX engine with a blank tensor."""
+    if RAPIDOCR_AVAILABLE and _rapid_engine is not None:
+        try:
+            import numpy as np
+            dummy = np.zeros((64, 64, 3), dtype=np.uint8)
+            _rapid_engine(dummy)
+        except Exception:
+            pass
+
+
 # ---------------------------------------------------------------------------
 # Relevant Keywords
 # ---------------------------------------------------------------------------
@@ -85,54 +105,48 @@ KEYWORDS = [
 ]
 
 
-def load_image_from_any(image_input) -> Image.Image:
-    """Accepts file path, PIL Image, bytes, or base64 data URL / raw base64 string."""
+def load_image_from_any(image_input) -> tuple[Image.Image, str]:
+    """Accepts file path, PIL Image, bytes, or base64 data URL / raw base64 string.
+    Returns (PIL Image, image_hash)."""
+    raw_bytes = None
     if isinstance(image_input, Image.Image):
         img = image_input
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        raw_bytes = buf.getvalue()
     elif isinstance(image_input, (str, Path)) and os.path.exists(str(image_input)):
-        img = Image.open(str(image_input))
+        with open(str(image_input), "rb") as f:
+            raw_bytes = f.read()
+        img = Image.open(io.BytesIO(raw_bytes))
     elif isinstance(image_input, str):
-        # Base64 string
-        if "," in image_input:
-            image_input = image_input.split(",", 1)[1]
-        decoded = base64.b64decode(image_input)
-        img = Image.open(io.BytesIO(decoded))
+        content = image_input.split(",", 1)[1] if "," in image_input else image_input
+        raw_bytes = base64.b64decode(content)
+        img = Image.open(io.BytesIO(raw_bytes))
     elif isinstance(image_input, bytes):
-        img = Image.open(io.BytesIO(image_input))
+        raw_bytes = image_input
+        img = Image.open(io.BytesIO(raw_bytes))
     else:
         raise ValueError(f"Unsupported image input type: {type(image_input)}")
 
     if img.mode != "RGB":
         img = img.convert("RGB")
-    return img
+
+    img_hash = hashlib.md5(raw_bytes[:8192] if raw_bytes else b"").hexdigest()
+    return img, img_hash
 
 
-def upscale_image(img: Image.Image, min_width: int = 1800) -> Image.Image:
+def optimize_image_for_ocr(img: Image.Image, max_dim: int = 1024) -> Image.Image:
+    """Downscales oversized images and slightly enhances contrast for fast, accurate OCR."""
     w, h = img.size
-    if w >= min_width:
-        return img
-    scale = min_width / w
-    return img.resize((int(w * scale), int(h * scale)), Image.Resampling.LANCZOS)
+    # If already moderate resolution, keep native
+    if max(w, h) > max_dim:
+        scale = max_dim / max(w, h)
+        img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.BILINEAR)
+    elif max(w, h) < 600:
+        scale = 600 / max(w, h)
+        img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.BILINEAR)
 
-
-def create_image_variants(img: Image.Image):
-    """Produces original, high-contrast grayscale, and sharpened variants."""
-    upscaled = upscale_image(img)
-    variants = [("original", upscaled)]
-
-    # Grayscale + high contrast
-    gray = ImageOps.grayscale(upscaled)
-    gray = ImageOps.autocontrast(gray, cutoff=1)
-    gray = ImageEnhance.Contrast(gray).enhance(1.8)
-    gray = ImageEnhance.Sharpness(gray).enhance(2.0)
-    variants.append(("grayscale", gray))
-
-    # Sharpened
-    sharp = upscaled.filter(ImageFilter.UnsharpMask(radius=2, percent=180, threshold=3))
-    sharp = ImageEnhance.Contrast(sharp).enhance(1.5)
-    variants.append(("sharpened", sharp))
-
-    return variants
+    return img
 
 
 def run_rapid_ocr(img: Image.Image):
@@ -184,17 +198,21 @@ def find_relevant_lines(text: str) -> list[str]:
 
 def process_image(image_input) -> dict:
     """
-    Main OCR pipeline:
-    1. Loads and preprocesses image with optimal resolution
-    2. Runs RapidOCR and optional Tesseract on primary variant
-    3. If text is sparse, checks high-contrast variant
-    4. Merges text and filters relevant lines
-    5. Returns structured OCR evidence
+    Fast, single-pass OCR pipeline with content-hash caching:
+    1. Loads image & computes content hash (returns cached if present)
+    2. Bounds image resolution to <= 1024px
+    3. Runs single-pass RapidOCR
+    4. Filters relevant lines and returns evidence
     """
-    img = load_image_from_any(image_input)
-    upscaled = upscale_image(img, min_width=1200)
+    img, img_hash = load_image_from_any(image_input)
 
-    rapid_items = run_rapid_ocr(upscaled)
+    # Check LRU cache
+    if img_hash in _ocr_cache:
+        return _ocr_cache[img_hash]
+
+    optimized = optimize_image_for_ocr(img, max_dim=1024)
+    rapid_items = run_rapid_ocr(optimized)
+
     cleaned_rapid = []
     seen_texts = set()
     rapid_lines = []
@@ -207,30 +225,18 @@ def process_image(image_input) -> dict:
                 cleaned_rapid.append(it)
                 rapid_lines.append(txt)
 
-    # If text is sparse, try contrast-enhanced variant
-    if len(cleaned_rapid) < 5:
-        gray = ImageOps.grayscale(upscaled)
-        gray = ImageOps.autocontrast(gray, cutoff=1)
-        gray = ImageEnhance.Contrast(gray).enhance(1.8)
-        more_items = run_rapid_ocr(gray)
-        for it in more_items:
-            if it["confidence"] >= 0.35 and it["text"]:
-                txt = it["text"].strip()
-                if txt and txt not in seen_texts:
-                    seen_texts.add(txt)
-                    cleaned_rapid.append(it)
-                    rapid_lines.append(txt)
-
-    best_tesseract = run_tesseract_ocr(upscaled) if TESSERACT_AVAILABLE else ""
-
     rapid_full = "\n".join(rapid_lines)
     combined = rapid_full
-    if best_tesseract:
-        combined = f"{rapid_full}\n\n[Tesseract]\n{best_tesseract}".strip()
+
+    # Optional Tesseract only if RapidOCR found zero lines
+    if not rapid_lines and TESSERACT_AVAILABLE:
+        tess = run_tesseract_ocr(optimized)
+        if tess:
+            combined = tess
 
     relevant = find_relevant_lines(combined)
 
-    return {
+    evidence = {
         "combined_text": combined,
         "relevant_lines": relevant,
         "ocr_items": cleaned_rapid,
@@ -240,3 +246,10 @@ def process_image(image_input) -> dict:
             "height": img.size[1],
         }
     }
+
+    # Store in LRU cache
+    if len(_ocr_cache) >= MAX_CACHE_SIZE:
+        _ocr_cache.pop(next(iter(_ocr_cache)))
+    _ocr_cache[img_hash] = evidence
+
+    return evidence

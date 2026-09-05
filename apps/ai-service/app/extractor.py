@@ -2,12 +2,11 @@
 PRODUCT PASSPORT - MULTI-PRODUCT EXTRACTION & DOCUMENT UNDERSTANDING
 
 Pipeline:
-1. IMAGE -> OCR evidence (via ocr.py)
-2. Qwen2.5-VL / Vision understanding via Ollama
-3. Checkbox / selection verification (checked vs unchecked vs explicit)
-4. Multi-product grouping & anti-hallucination validation
-5. Robust regex & heuristic fallback when Ollama/vision is offline
-6. Data normalization (dates, prices, currencies, categories)
+1. IMAGE -> OCR evidence (via ocr.py) with caching and downscaling
+2. High-precision regex/heuristic extraction (zero fabrication)
+3. Optional fast Vision understanding via Ollama (strict 4s bounded timeout)
+4. Data normalization (dates, prices, currencies, categories)
+5. Strict anti-hallucination validation: null/empty strings when evidence is missing
 """
 
 import os
@@ -24,12 +23,32 @@ from .ocr import process_image, load_image_from_any
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
 DEFAULT_VISION_MODEL = os.environ.get("VISION_MODEL", "qwen2.5vl:7b")
-OLLAMA_TIMEOUT = int(os.environ.get("OLLAMA_TIMEOUT", "20"))
+OLLAMA_TIMEOUT = int(os.environ.get("OLLAMA_TIMEOUT", "4"))
+DISABLE_OLLAMA_VISION = os.environ.get("DISABLE_OLLAMA_VISION", "false").lower() in ("true", "1", "yes")
+
+# Known consumer electronics / appliance brands
+KNOWN_BRANDS = [
+    "Samsung", "LG", "Sony", "Dell", "HP", "Lenovo", "Apple",
+    "Electrolux", "Bosch", "Siemens", "Whirlpool", "Panasonic",
+    "Philips", "Dyson", "Asus", "Acer", "Nordhaus", "Miele",
+    "Haier", "Hisense", "TCL", "Toshiba", "Logitech"
+]
+
+# Blacklist of generic label words to never capture as models or serials
+INVALID_CODE_WORDS = {
+    "model", "modelcode", "modelno", "modelnumber", "mod",
+    "serial", "serialno", "serialnumber", "sn", "s/n",
+    "warranty", "guarantee", "certificate", "invoice", "receipt",
+    "number", "customer", "customercopy", "date", "actiondate",
+    "dateofpurchase", "purchase", "purchased", "extended", "extendedwarranty",
+    "product", "productpurchased", "companyname", "logocompany", "logo",
+    "partsnot", "partnot", "service", "terms", "limited", "signature"
+}
 
 
 def get_available_ollama_models() -> list[str]:
     try:
-        resp = requests.get(f"{OLLAMA_URL}/api/tags", timeout=3)
+        resp = requests.get(f"{OLLAMA_URL}/api/tags", timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             return [m.get("name", "") for m in data.get("models", []) if m.get("name")]
@@ -39,6 +58,8 @@ def get_available_ollama_models() -> list[str]:
 
 
 def choose_vision_model() -> str | None:
+    if DISABLE_OLLAMA_VISION:
+        return None
     models = get_available_ollama_models()
     for m in models:
         lower = m.lower()
@@ -51,68 +72,77 @@ def choose_vision_model() -> str | None:
 
 def image_to_base64(img: Image.Image) -> str:
     buffered = io.BytesIO()
-    img.save(buffered, format="JPEG", quality=90)
+    img.save(buffered, format="JPEG", quality=85)
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 
-def normalize_date(value) -> str | None:
-    if value is None:
-        return None
-    val_str = str(value).strip()
+def normalize_date(val_str: str | None) -> str | None:
+    """Validates and normalizes date strings (YYYY-MM-DD, DD/MM/YYYY, etc.) rejecting invalid numbers."""
     if not val_str:
+        return None
+    val_str = str(val_str).strip()
+    if not val_str or len(val_str) < 6:
         return None
 
     formats = [
-        "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y", "%m-%d-%Y",
-        "%d/%m/%y", "%d-%m-%y", "%m/%d/%y", "%m-%d-%y",
+        "%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d",
+        "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y",
+        "%m/%d/%Y", "%m-%d-%Y", "%m.%d.%Y",
+        "%d/%m/%y", "%d-%m-%y", "%d.%m.%y",
         "%B %d, %Y", "%b %d, %Y", "%d %B %Y", "%d %b %Y"
     ]
     for fmt in formats:
         try:
-            return datetime.strptime(val_str, fmt).strftime("%Y-%m-%d")
+            parsed = datetime.strptime(val_str, fmt)
+            # Basic sanity check: year between 1995 and 2035
+            if 1995 <= parsed.year <= 2035:
+                return parsed.strftime("%Y-%m-%d")
         except Exception:
             pass
 
-    date_patterns = [
-        r"\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b",
-        r"\b\d{1,2}[-/]\d{1,2}[-/]\d{4}\b",
-        r"\b\d{1,2}[-/]\d{1,2}[-/]\d{2}\b"
+    return None
+
+
+def extract_price_and_currency(text: str) -> tuple[float | None, str | None]:
+    """
+    Extracts authentic purchase price only when accompanied by explicit currency or price markers.
+    Never extracts random standalone numbers as prices.
+    """
+    # 1. Look for currency symbol followed/preceded by amount: $599.00, €450, 1249 USD, etc.
+    currency_patterns = [
+        (r"\$\s*(\d{2,6}(?:[.,]\d{2})?)", "USD"),
+        (r"(\d{2,6}(?:[.,]\d{2})?)\s*(?:USD|usd)\b", "USD"),
+        (r"€\s*(\d{2,6}(?:[.,]\d{2})?)", "EUR"),
+        (r"(\d{2,6}(?:[.,]\d{2})?)\s*(?:EUR|eur)\b", "EUR"),
+        (r"£\s*(\d{2,6}(?:[.,]\d{2})?)", "GBP"),
+        (r"(\d{2,6}(?:[.,]\d{2})?)\s*(?:GBP|gbp)\b", "GBP"),
+        (r"₹\s*(\d{2,6}(?:[.,]\d{2})?)", "INR"),
+        (r"(\d{2,6}(?:[.,]\d{2})?)\s*(?:INR|inr)\b", "INR"),
     ]
-    for pat in date_patterns:
-        m = re.search(pat, val_str)
+    for pat, curr in currency_patterns:
+        m = re.search(pat, text)
         if m:
-            for fmt in formats:
-                try:
-                    return datetime.strptime(m.group(0), fmt).strftime("%Y-%m-%d")
-                except Exception:
-                    pass
-    return val_str
+            raw = m.group(1).replace(",", ".")
+            try:
+                val = float(raw)
+                if val > 0:
+                    return val, curr
+            except Exception:
+                pass
 
+    # 2. Look for price keywords: Total: 699, Amount: 350.00
+    kw_pattern = r"(?:total\s*(?:amount|price)?|grand\s*total|net\s*amount|price|amount)\s*[:=]\s*[:$€£₹]?\s*(\d{2,6}(?:[.,]\d{2})?)"
+    m = re.search(kw_pattern, text, re.IGNORECASE)
+    if m:
+        raw = m.group(1).replace(",", ".")
+        try:
+            val = float(raw)
+            if val > 0:
+                return val, "USD"
+        except Exception:
+            pass
 
-def normalize_price(value) -> tuple[float | None, str]:
-    if value is None:
-        return None, "USD"
-    val_str = str(value).strip()
-    if not val_str:
-        return None, "USD"
-
-    currency = "USD"
-    if "€" in val_str or "eur" in val_str.lower():
-        currency = "EUR"
-    elif "£" in val_str or "gbp" in val_str.lower():
-        currency = "GBP"
-    elif "₹" in val_str or "inr" in val_str.lower():
-        currency = "INR"
-    elif "$" in val_str or "usd" in val_str.lower():
-        currency = "USD"
-
-    # Extract digits and decimal point
-    cleaned = re.sub(r"[^\d.]", "", val_str.replace(",", "."))
-    try:
-        price = float(cleaned)
-        return price, currency
-    except Exception:
-        return None, currency
+    return None, None
 
 
 def clean_json_response(text: str) -> dict | None:
@@ -131,213 +161,259 @@ def clean_json_response(text: str) -> dict | None:
     return None
 
 
-def create_vision_prompt(ocr_evidence: dict) -> str:
-    combined_text = ocr_evidence.get("combined_text", "")
-    relevant_lines = ocr_evidence.get("relevant_lines", [])
-
-    return f"""
-You are the document-understanding AI engine of an enterprise Product Passport system.
-You are inspecting a REAL invoice, receipt, warranty card, certificate, or product label.
-The document may contain one or multiple products.
-
-IMPORTANT RULES:
-1. Product Selection:
-   - A product listed on a document does NOT mean it was purchased.
-   - If checkboxes exist, only return products that are marked ([X], [✓], ticked, or checked).
-   - If a warranty table lists generic categories (e.g. TV, Refrigerator, Dishwasher), DO NOT treat them as purchased products unless specifically checked or selected.
-   - If there is no checkbox, identify explicitly purchased line items with models/serial numbers.
-2. Anti-hallucination:
-   - NEVER invent or guess model numbers or serial numbers.
-   - Return null if a field is not present in the document.
-   - Preserve exact model numbers and serial numbers.
-3. Multi-product:
-   - If multiple distinct products were purchased, return each as an independent item in the "products" array.
-
-OCR Context extracted from document:
-{combined_text[:3000]}
-
-Relevant Lines:
-{chr(10).join(relevant_lines[:30])}
-
-Return ONLY a JSON object with this exact structure:
-{{
-  "document_type": "Purchase invoice" | "Retail receipt" | "Warranty certificate" | "Product label" | "Other",
-  "products": [
-    {{
-      "product": "Product name or descriptive title",
-      "brand": "Brand name",
-      "model": "Model number",
-      "serial_number": "Serial number",
-      "category": "Home appliance" | "Electronics" | "Small domestic appliance" | "Computing" | "Furniture" | "Other",
-      "purchase_price": 689.0,
-      "currency": "EUR" | "USD" | "GBP" | "INR",
-      "purchase_date": "YYYY-MM-DD",
-      "warranty": "24 months",
-      "seller": "Seller or store name",
-      "customer_name": "Customer name",
-      "order_id": "Order ID",
-      "invoice_number": "Invoice number",
-      "selection_status": "checked" | "explicit" | "unchecked" | "unknown",
-      "selection_evidence": "Brief description of visual proof"
-    }}
-  ]
-}}
-"""
-
-
 def fallback_extraction(ocr_evidence: dict) -> dict:
-    """High-reliability regex/heuristic fallback when Ollama is offline or unavailable."""
+    """
+    Evidence-based extraction pipeline (Zero fabrication):
+    Extracts brand, model, serial, commercial fields from OCR evidence.
+    Returns None or empty string when evidence is missing.
+    """
     text = ocr_evidence.get("combined_text", "")
     lines = ocr_evidence.get("relevant_lines", [])
     lower = text.lower()
 
     # Document type
     doc_type = "Warranty certificate"
-    if "tax invoice" in lower or "invoice" in lower:
+    if any(k in lower for k in ["tax invoice", "invoice", "commercial invoice"]):
         doc_type = "Purchase invoice"
-    elif "receipt" in lower or "bill" in lower:
+    elif any(k in lower for k in ["receipt", "cash receipt", "sales receipt", "bill"]):
         doc_type = "Retail receipt"
-    elif "label" in lower or "rating plate" in lower:
+    elif any(k in lower for k in ["rating plate", "product label", "specification label"]):
         doc_type = "Product label"
+    elif any(k in lower for k in ["extended warranty", "warranty card", "guarantee"]):
+        doc_type = "Warranty certificate"
 
-    # Known brands
-    known_brands = [
-        "Samsung", "LG", "Sony", "Dell", "HP", "Lenovo", "Apple",
-        "Electrolux", "Bosch", "Siemens", "Whirlpool", "Panasonic",
-        "Philips", "Dyson", "Asus", "Acer", "Nordhaus", "Miele"
-    ]
-    found_brand = None
-    for b in known_brands:
+    # Brand extraction
+    found_brand = ""
+    for b in KNOWN_BRANDS:
         if re.search(rf"\b{re.escape(b)}\b", text, re.IGNORECASE):
             found_brand = b
             break
 
-    # Model
-    model = None
+    # Model extraction
+    model = ""
     model_patterns = [
-        r"model\s*(?:no|number)?\s*[:#\-]?\s*([A-Z0-9][A-Z0-9._/\- ]{2,20})",
-        r"mod(?:el)?\b[:#\-\s]+([A-Z0-9][A-Z0-9._/\-]{2,20})",
-        r"\b([A-Z]{1,4}[0-9]{2,6}[A-Z0-9\-_]{1,10})\b"
+        r"(?:model\s*(?:code|no|number)?|mod(?:el)?)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9._/\-]{2,25})",
+        r"\b([A-Z]{2,4}[0-9]{2,6}[A-Z0-9\-_]{1,12})\b",
     ]
     for pat in model_patterns:
-        m = re.search(pat, text, re.IGNORECASE)
-        if m:
-            cand = m.group(1).strip()
-            if len(cand) >= 3 and not cand.lower() in ["invoice", "receipt", "warranty", "number"]:
+        for m in re.finditer(pat, text, re.IGNORECASE):
+            cand = m.group(1).strip().strip("-:._")
+            cand_clean = re.sub(r"[^a-zA-Z0-9]", "", cand.lower())
+            if len(cand) >= 3 and cand_clean not in INVALID_CODE_WORDS:
                 model = cand
                 break
+        if model:
+            break
 
-    # Serial number
-    serial = None
+    # Serial extraction
+    serial = ""
     serial_patterns = [
-        r"serial\s*(?:no|number)?\s*[:#\-]?\s*([A-Z0-9][A-Z0-9._/\-]{3,24})",
-        r"s/n\s*[:#\-]?\s*([A-Z0-9][A-Z0-9._/\-]{3,24})",
-        r"\bsn\s*[:#\-]?\s*([A-Z0-9][A-Z0-9._/\-]{3,24})",
-        r"\b([0-9A-Z]{8,18})\b"
+        r"(?:s/n|sn|serial\s*(?:no|number)?)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9._/\-]{3,25})",
+        r"\b([0-9A-Z]{9,20})\b",
     ]
     for pat in serial_patterns:
-        m = re.search(pat, text, re.IGNORECASE)
-        if m:
-            cand = m.group(1).strip()
-            if cand != model and len(cand) >= 4 and not cand.lower() in ["warranty", "invoice", "receipt"]:
-                serial = cand
+        for m in re.finditer(pat, text, re.IGNORECASE):
+            cand = m.group(1).strip().strip("-:._")
+            cand_clean = re.sub(r"[^a-zA-Z0-9]", "", cand.lower())
+            if len(cand) >= 4 and cand != model and cand_clean not in INVALID_CODE_WORDS:
+                # Ensure it has both digits or letters
+                if any(c.isdigit() for c in cand):
+                    serial = cand
+                    break
+        if serial:
+            break
+
+    # Purchase Date extraction
+    purchase_date = None
+    # 1. Date with explicit prefix (e.g. ActionDate:05.09.2024, Date: 2021-04-06)
+    date_kw_pattern = r"(?:action\s*date|purchase\s*date|date\s*of\s*purchase|invoice\s*date|date)\s*[:#\-]?\s*(\d{1,4}[./\-]\d{1,2}[./\-]\d{1,4})"
+    m = re.search(date_kw_pattern, text, re.IGNORECASE)
+    if m:
+        purchase_date = normalize_date(m.group(1))
+
+    # 2. General valid date regex
+    if not purchase_date:
+        date_candidates = re.findall(r"\b((?:20\d{2}[-/.](?:0?[1-9]|1[0-2])[-/.](?:0?[1-9]|[12]\d|3[01]))|(?:(?:0?[1-9]|[12]\d|3[01])[-/.](?:0?[1-9]|1[0-2])[-/.](?:20\d{2}|\d{2})))\b", text)
+        for cand in date_candidates:
+            d = normalize_date(cand)
+            if d:
+                purchase_date = d
                 break
 
-    # Date
-    date_match = re.search(r"\b(\d{1,4}[-/]\d{1,2}[-/]\d{1,4})\b", text)
-    purchase_date = normalize_date(date_match.group(1)) if date_match else None
+    # Price & Currency
+    price, currency = extract_price_and_currency(text)
 
-    # Price
-    price_match = re.search(r"(?:total|amount|price|net)?\s*[:$€£₹]?\s*(\d{2,6}(?:[.,]\d{2})?)\s*(?:usd|eur|gbp|inr|€|\$|£)?", text, re.IGNORECASE)
-    price, currency = normalize_price(price_match.group(1) if price_match else None)
+    # Warranty duration extraction
+    warranty = None
+    warranty_match = re.search(r"(\b\d{1,2}\s*(?:months?|years?|yr|mo)\b)\s*(?:warranty|guarantee)?", text, re.IGNORECASE)
+    if warranty_match:
+        warranty = warranty_match.group(1).strip()
+    elif "warranty" in lower:
+        if "24" in text:
+            warranty = "24 months"
+        elif "36" in text:
+            warranty = "36 months"
+        elif "12" in text or "1 year" in lower:
+            warranty = "12 months"
+
+    # Seller extraction
+    seller = None
+    seller_match = re.search(r"(?:sold\s*by|seller|store|retailer|dealer|merchant)\s*[:\-]?\s*([A-Za-z0-9 &.',\-]{3,35})", text, re.IGNORECASE)
+    if seller_match:
+        s_cand = seller_match.group(1).strip()
+        if not any(kw in s_cand.lower() for kw in ["warranty", "invoice", "receipt", "signature"]):
+            seller = s_cand
 
     # Product category & name
-    category = "Home appliance"
+    category = "Other"
     product_name = None
-    category_map = {
-        "refrigerator": ("Bespoke Refrigerator", "Home appliance"),
-        "fridge": ("Refrigerator", "Home appliance"),
-        "washing machine": ("Front Load Washer", "Home appliance"),
-        "washer": ("Washing Machine", "Home appliance"),
-        "dryer": ("Tumble Dryer", "Home appliance"),
-        "espresso": ("Precision Espresso Maker", "Small domestic appliance"),
-        "coffee": ("Coffee Maker", "Small domestic appliance"),
-        "laptop": ("Latitude Laptop", "Computing"),
-        "television": ("Smart LED TV", "Electronics"),
-        "tv": ("Smart Television", "Electronics"),
-        "microwave": ("Countertop Microwave", "Home appliance"),
-        "dishwasher": ("Built-in Dishwasher", "Home appliance"),
-    }
-    for kw, (pname, cat) in category_map.items():
-        if kw in lower:
-            product_name = pname
+    category_map = [
+        ("refrigerator", "Refrigerator", "Home appliance"),
+        ("fridge", "Refrigerator", "Home appliance"),
+        ("washing machine", "Front Load Washer", "Home appliance"),
+        ("washer", "Washing Machine", "Home appliance"),
+        ("dryer", "Tumble Dryer", "Home appliance"),
+        ("espresso", "Espresso Maker", "Small domestic appliance"),
+        ("coffee maker", "Coffee Maker", "Small domestic appliance"),
+        ("laptop", "Laptop", "Computing"),
+        ("television", "Smart TV", "Electronics"),
+        ("tv", "Smart TV", "Electronics"),
+        ("microwave", "Microwave Oven", "Home appliance"),
+        ("dishwasher", "Dishwasher", "Home appliance"),
+        ("air-conditioner", "Air Conditioner", "Home appliance"),
+        ("air conditioner", "Air Conditioner", "Home appliance"),
+    ]
+    for kw, pname, cat in category_map:
+        if re.search(rf"\b{re.escape(kw)}\b", lower):
+            product_name = f"{found_brand} {pname}".strip() if found_brand else pname
             category = cat
             break
 
     if not product_name:
-        product_name = f"{found_brand or 'Verified'} Product"
+        if found_brand and model:
+            product_name = f"{found_brand} {model}".strip()
+            category = "Electronics"
+        elif found_brand:
+            product_name = f"{found_brand} Product"
+        elif model:
+            product_name = f"Product {model}"
+        else:
+            product_name = "Verified Product"
 
     product = {
         "product": product_name,
-        "brand": found_brand or "Generic",
-        "model": model or "M-PRO-100",
-        "serialNumber": serial or "SN-82914-A",
+        "brand": found_brand,
+        "model": model,
+        "serialNumber": serial,
         "category": category,
         "selected": True,
-        "evidence": "Extracted from document OCR text using heuristic rules.",
+        "evidence": "Extracted from document OCR text using validated field rules.",
     }
 
     return {
         "documentType": doc_type,
         "products": [product],
         "extractedFields": {
-            "purchaseDate": purchase_date or datetime.now().strftime("%Y-%m-%d"),
-            "purchasePrice": price if price and price > 0 else 499.0,
-            "currency": currency or "USD",
-            "warranty": "24 months" if "24" in text else "12 months",
-            "seller": "Authorized Retailer",
+            "purchaseDate": purchase_date,
+            "purchasePrice": price,
+            "currency": currency,
+            "warranty": warranty,
+            "seller": seller,
         }
     }
 
 
-def extract_products_from_image(image_input, file_name: str = "") -> dict:
+def create_vision_prompt(ocr_evidence: dict) -> str:
+    combined_text = ocr_evidence.get("combined_text", "")
+    relevant_lines = ocr_evidence.get("relevant_lines", [])
+
+    return f"""
+You are the document-understanding AI engine of an enterprise Product Passport system.
+You are inspecting an invoice, receipt, warranty card, certificate, or product label.
+
+CRITICAL RULES (ZERO FABRICATION):
+1. Return null or empty string for ANY field not explicitly stated on the document.
+2. NEVER guess, invent, or fabricate model numbers, serial numbers, prices, dates, or sellers.
+3. Preserve exact model numbers and serial numbers.
+
+OCR Text Context:
+{combined_text[:2000]}
+
+Relevant Lines:
+{chr(10).join(relevant_lines[:20])}
+
+Return ONLY valid JSON:
+{{
+  "document_type": "Purchase invoice" | "Retail receipt" | "Warranty certificate" | "Product label" | "Other",
+  "products": [
+    {{
+      "product": "Product name or descriptive title",
+      "brand": "Brand name or empty string",
+      "model": "Exact model number or empty string",
+      "serial_number": "Exact serial number or empty string",
+      "category": "Home appliance" | "Electronics" | "Small domestic appliance" | "Computing" | "Other",
+      "purchase_price": null,
+      "currency": "USD" | "EUR" | "GBP" | null,
+      "purchase_date": "YYYY-MM-DD" | null,
+      "warranty": "12 months" | null,
+      "seller": null,
+      "selection_status": "checked" | "explicit" | "unchecked"
+    }}
+  ]
+}}
+"""
+
+
+def extract_products_from_image(image_input, file_name: str = "", ocr_evidence: dict | None = None) -> dict:
     """
     Main extraction pipeline:
-    1. Runs OCR to extract text and lines
-    2. Tries Qwen2.5-VL via Ollama if available
-    3. Falls back gracefully to heuristic/OCR extraction if Ollama is offline
-    4. Normalizes output matching the DocumentAnalysis schema
+    1. Runs single-pass OCR (or reuses pre-computed ocr_evidence)
+    2. Checks if OCR extracted strong evidence (brand + model/serial) -> short-circuits in <3s
+    3. If vision needed and Ollama available, attempts fast Qwen query with strict 4s timeout
+    4. Combines with validated extraction rules ensuring zero fabrication
     """
-    ocr_evidence = process_image(image_input)
-    vision_model = choose_vision_model()
+    if ocr_evidence is None:
+        ocr_evidence = process_image(image_input)
+
+    # Short-circuit check: if OCR evidence already found brand or model and valid text,
+    # we don't need a slow 90-second Ollama call.
+    fallback_res = fallback_extraction(ocr_evidence)
+    has_strong_ocr = False
+    if fallback_res.get("products"):
+        p = fallback_res["products"][0]
+        if (p.get("brand") and p.get("model")) or p.get("serialNumber"):
+            has_strong_ocr = True
+
+    # Only attempt Ollama if not short-circuited and vision model is ready
+    vision_model = choose_vision_model() if not has_strong_ocr else None
     result = None
 
     if vision_model:
         prompt = create_vision_prompt(ocr_evidence)
-        img = load_image_from_any(image_input)
-        b64 = image_to_base64(img)
-
-        payload = {
-            "model": vision_model,
-            "prompt": prompt,
-            "images": [b64],
-            "stream": False,
-            "format": "json",
-            "options": {"temperature": 0.0}
-        }
         try:
+            img, _ = load_image_from_any(image_input)
+            b64 = image_to_base64(img)
+
+            payload = {
+                "model": vision_model,
+                "prompt": prompt,
+                "images": [b64],
+                "stream": False,
+                "format": "json",
+                "options": {"temperature": 0.0}
+            }
             resp = requests.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=OLLAMA_TIMEOUT)
             if resp.status_code == 200:
                 raw = resp.json().get("response", "")
                 result = clean_json_response(raw)
         except Exception as e:
-            print(f"Ollama vision inference failed: {e}")
+            # Bounded failure: immediately fall back without stalling
+            pass
 
     if not result or not result.get("products"):
-        # Graceful OCR fallback
-        return fallback_extraction(ocr_evidence)
+        return fallback_res
 
-    # Process and normalize the model's output
+    # Process and normalize the model's output (preventing fabrication)
     raw_products = result.get("products", [])
     valid_products = []
     first_fields = {}
@@ -347,14 +423,20 @@ def extract_products_from_image(image_input, file_name: str = "") -> dict:
         if status == "unchecked":
             continue
 
-        p_name = prod.get("product") or "Identified Product"
-        brand = prod.get("brand") or "Generic"
-        model = prod.get("model") or "Standard"
-        serial = prod.get("serial_number") or ""
-        category = prod.get("category") or "Home appliance"
-        evidence = prod.get("selection_evidence") or "Visual confirmation from document."
+        p_name = prod.get("product") or fallback_res["products"][0]["product"]
+        brand = prod.get("brand") or fallback_res["products"][0]["brand"]
+        model = prod.get("model") or fallback_res["products"][0]["model"]
+        serial = prod.get("serial_number") or fallback_res["products"][0]["serialNumber"]
+        category = prod.get("category") or fallback_res["products"][0]["category"]
 
-        price, curr = normalize_price(prod.get("purchase_price"))
+        price, curr = None, None
+        if prod.get("purchase_price") is not None:
+            try:
+                price = float(prod.get("purchase_price"))
+                curr = prod.get("currency") or "USD"
+            except Exception:
+                pass
+
         pdate = normalize_date(prod.get("purchase_date"))
 
         valid_products.append({
@@ -364,25 +446,26 @@ def extract_products_from_image(image_input, file_name: str = "") -> dict:
             "serialNumber": serial,
             "category": category,
             "selected": True,
-            "evidence": evidence
+            "evidence": "Visual confirmation and OCR verification."
         })
 
         if not first_fields:
             first_fields = {
-                "purchaseDate": pdate or "",
-                "purchasePrice": price,
-                "currency": curr,
-                "warranty": str(prod.get("warranty") or "24 months"),
-                "seller": str(prod.get("seller") or ""),
+                "purchaseDate": pdate or fallback_res["extractedFields"].get("purchaseDate"),
+                "purchasePrice": price or fallback_res["extractedFields"].get("purchasePrice"),
+                "currency": curr or fallback_res["extractedFields"].get("currency"),
+                "warranty": prod.get("warranty") or fallback_res["extractedFields"].get("warranty"),
+                "seller": prod.get("seller") or fallback_res["extractedFields"].get("seller"),
             }
 
-    doc_type = result.get("document_type") or "Product document"
+    doc_type = result.get("document_type") or fallback_res["documentType"]
 
     if not valid_products:
-        return fallback_extraction(ocr_evidence)
+        return fallback_res
 
     return {
         "documentType": doc_type,
         "products": valid_products,
         "extractedFields": first_fields
     }
+
