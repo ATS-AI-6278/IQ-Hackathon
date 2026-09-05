@@ -194,22 +194,28 @@ export function getPassport(passportId: string): Passport | undefined {
 }
 
 export function createPassport(input: PassportInput): Passport {
+  const isVerified = Boolean(
+    input.physicalProductImage &&
+      (input.verificationStatus === "verified" || !input.verificationStatus),
+  );
   const passport: Passport = {
     ...input,
     passportId: `DPP-${String(passports.length + 20).padStart(5, "0")}`,
-    physicalProductImage: null,
-    physicalScanDate: null,
-    matchConfidence: null,
-    verificationStatus: "pending",
+    physicalProductImage: input.physicalProductImage || null,
+    physicalScanDate: input.physicalScanDate || (isVerified ? now : null),
+    matchConfidence: input.matchConfidence ?? (isVerified ? 0.95 : null),
+    verificationStatus: isVerified ? "verified" : (input.verificationStatus || "pending"),
     createdAt: now,
     updatedAt: now,
   };
   passports.unshift(passport);
   activity.unshift({
     id: `act-${String(activity.length + 1).padStart(3, "0")}`,
-    type: "created",
-    title: "New passport created",
-    description: `${passport.product} was added from ${passport.documentType.toLowerCase()}`,
+    type: isVerified ? "linked" : "created",
+    title: isVerified ? "Passport created & physically verified" : "New passport created",
+    description: isVerified
+      ? `${passport.product} verified with physical scan match (${Math.round((passport.matchConfidence || 0.95) * 100)}%)`
+      : `${passport.product} was added from ${passport.documentType.toLowerCase()}`,
     timestamp: now,
     passportId: passport.passportId,
   });

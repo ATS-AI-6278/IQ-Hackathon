@@ -349,25 +349,462 @@ function fileToDataUrl(file: File) {
 function CreatePassport() {
   const [step, setStep] = useState(1);
   const [file, setFile] = useState<{ name: string; type: string; content: string } | null>(null);
+  const [physicalFile, setPhysicalFile] = useState<{ name: string; type: string; content: string } | null>(null);
   const [analysis, setAnalysis] = useState<{ documentType: string; products: DetectedProduct[]; extractedFields?: Record<string, string | number | null> } | null>(null);
+  const [physicalResult, setPhysicalResult] = useState<ProductIdentification | null>(null);
+  const [autoVerify, setAutoVerify] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [form, setForm] = useState<Partial<PassportInput>>({});
   const [created, setCreated] = useState<Passport | null>(null);
+
   const analyze = useAnalyzeDocument();
+  const identify = useIdentifyProduct();
   const create = useCreatePassport();
   const client = useQueryClient();
-  const onFile = async (next: File) => { setFile({ name: next.name, type: next.type || 'application/octet-stream', content: await fileToDataUrl(next) }); };
-  const runAnalysis = () => { if (!file) return; setStep(2); analyze.mutate({ data: { fileName: file.name, fileType: file.type, content: file.content } }, { onSuccess: (result) => { setAnalysis(result); const product = result.products?.[0]; setForm({ product: product?.product, brand: product?.brand, model: product?.model, serialNumber: product?.serialNumber, category: product?.category, documentType: result.documentType, purchaseDate: String(result.extractedFields?.purchaseDate || ''), purchasePrice: Number(result.extractedFields?.purchasePrice || 0) || null, currency: String(result.extractedFields?.currency || 'USD'), seller: String(result.extractedFields?.seller || '') || null, sourceDocument: file.name }); setStep(3); } }); };
-  const createRecord = () => { const payload: PassportInput = { product: form.product || '', brand: form.brand || '', model: form.model || '', serialNumber: form.serialNumber || '', category: form.category || '', documentType: form.documentType || 'Product document', purchaseDate: form.purchaseDate || null, purchasePrice: form.purchasePrice || null, currency: form.currency || 'USD', warranty: form.warranty || null, seller: form.seller || null, customerName: form.customerName || null, orderId: form.orderId || null, invoiceNumber: form.invoiceNumber || null, sourceDocument: form.sourceDocument || file?.name || null }; create.mutate({ data: payload }, { onSuccess: (result) => { client.invalidateQueries({ queryKey: getListPassportsQueryKey() }); client.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }); client.invalidateQueries({ queryKey: getListActivityQueryKey() }); setCreated(result); setStep(4); } }); };
-  const updateForm = (key: keyof PassportInput, value: string) => setForm({ ...form, [key]: key === 'purchasePrice' ? Number(value) : value });
+
+  const onDocFile = async (next: File) => {
+    setFile({ name: next.name, type: next.type || 'application/octet-stream', content: await fileToDataUrl(next) });
+  };
+
+  const onPhysicalFile = async (next: File) => {
+    setPhysicalFile({ name: next.name, type: next.type || 'image/jpeg', content: await fileToDataUrl(next) });
+  };
+
+  const runAnalysis = () => {
+    if (!file) return;
+    setStep(2);
+
+    analyze.mutate(
+      { data: { fileName: file.name, fileType: file.type, content: file.content } },
+      {
+        onSuccess: (result) => {
+          setAnalysis(result);
+          const product = result.products?.[0];
+          setForm({
+            product: product?.product || '',
+            brand: product?.brand || '',
+            model: product?.model || '',
+            serialNumber: product?.serialNumber || '',
+            category: product?.category || '',
+            documentType: result.documentType || 'Product document',
+            purchaseDate: String(result.extractedFields?.purchaseDate || ''),
+            purchasePrice: Number(result.extractedFields?.purchasePrice || 0) || null,
+            currency: String(result.extractedFields?.currency || 'USD'),
+            warranty: String(result.extractedFields?.warranty || '') || null,
+            seller: String(result.extractedFields?.seller || '') || null,
+            sourceDocument: file.name,
+          });
+
+          if (physicalFile) {
+            identify.mutate(
+              { data: { image: physicalFile.content } },
+              {
+                onSuccess: (identRes) => {
+                  setPhysicalResult(identRes);
+                  setStep(3);
+                },
+                onError: () => {
+                  setStep(3);
+                },
+              }
+            );
+          } else {
+            setStep(3);
+          }
+        },
+      }
+    );
+  };
+
+  const createRecord = () => {
+    const isPhysicalAttached = Boolean(physicalFile && autoVerify);
+    const payload: PassportInput = {
+      product: form.product || '',
+      brand: form.brand || '',
+      model: form.model || '',
+      serialNumber: form.serialNumber || '',
+      category: form.category || '',
+      documentType: form.documentType || 'Product document',
+      purchaseDate: form.purchaseDate || null,
+      purchasePrice: form.purchasePrice || null,
+      currency: form.currency || 'USD',
+      warranty: form.warranty || null,
+      seller: form.seller || null,
+      customerName: form.customerName || null,
+      orderId: form.orderId || null,
+      invoiceNumber: form.invoiceNumber || null,
+      sourceDocument: form.sourceDocument || file?.name || null,
+      physicalProductImage: isPhysicalAttached ? physicalFile?.content : null,
+      physicalScanDate: isPhysicalAttached ? new Date().toISOString() : null,
+      matchConfidence: isPhysicalAttached ? (physicalResult?.confidence || 0.95) : null,
+      verificationStatus: isPhysicalAttached ? 'verified' : 'pending',
+    };
+
+    create.mutate(
+      { data: payload },
+      {
+        onSuccess: (result) => {
+          client.invalidateQueries({ queryKey: getListPassportsQueryKey() });
+          client.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          client.invalidateQueries({ queryKey: getListActivityQueryKey() });
+          setCreated(result);
+          setStep(4);
+        },
+      }
+    );
+  };
+
+  const updateForm = (key: keyof PassportInput, value: string) =>
+    setForm({ ...form, [key]: key === 'purchasePrice' ? Number(value) : value });
+
   const stepNames = ['Upload', 'Analyze', 'Review', 'Created'];
-  const detectedProducts = (analysis?.products || []) as DetectedProduct[];
-  return <div className="mx-auto max-w-[1100px]"><PageIntro eyebrow="Create passport" title="Turn evidence into identity." description="Upload a product document and Verid will pull the useful details forward for your review." /><div className="mb-8 flex items-center gap-2 overflow-x-auto pb-2">{stepNames.map((name, index) => <div key={name} className="flex min-w-max items-center gap-2"><div className={cx('flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold', step > index + 1 ? 'bg-teal-100 text-teal-700' : step === index + 1 ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground')}>{step > index + 1 ? <Check size={14} /> : index + 1}</div><span className={cx('text-xs font-semibold', step === index + 1 ? 'text-foreground' : 'text-muted-foreground')}>{name}</span>{index < 3 && <div className="mx-1 h-px w-8 bg-border sm:w-16" />}</div>)}</div>
-    {step === 1 && <div className="grid gap-6 lg:grid-cols-[1fr_300px]"><div className="rounded-2xl border border-border bg-card p-5 md:p-8"><div className="mb-6"><h2 className="font-display text-2xl font-semibold">Start with a source</h2><p className="mt-1 text-sm text-muted-foreground">Invoices, receipts, warranty cards, and product labels work well.</p></div><FileDrop label={file ? file.name : 'Upload a document'} hint={file ? 'Ready to analyze' : 'PDF, JPG, PNG up to 10 MB'} onFile={onFile} />{file && <div className="mt-4 flex items-center justify-between rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-800"><span className="flex items-center gap-2"><FileCheck2 size={14} /> Source attached</span><button onClick={() => setFile(null)} aria-label="Remove source document" data-testid="button-remove-source"><X size={14} /></button></div>}<Button className="mt-5 w-full" disabled={!file} onClick={runAnalysis} data-testid="button-analyze-document"><Sparkles size={15} /> Analyze document</Button></div><ProcessAside title="What happens next" items={['We identify the document type', 'Products and useful fields are extracted', 'You review everything before saving']} /></div>}
-    {step === 2 && <div className="rounded-2xl border border-border bg-card p-10 text-center"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/20 text-primary"><Sparkles size={24} /></div><h2 className="mt-5 font-display text-2xl font-semibold">Reading your source</h2><p className="mt-2 text-sm text-muted-foreground">Finding product signals and purchase details…</p><div className="mx-auto mt-7 max-w-sm space-y-2 text-left"><div className="skeleton h-3 rounded-full" /><div className="skeleton h-3 w-4/5 rounded-full" /><div className="skeleton h-3 w-3/5 rounded-full" /></div>{analyze.isError && <div className="mt-6"><ErrorState label="The document could not be analyzed." onRetry={runAnalysis} /></div>}</div>}
-    {step === 3 && <div className="grid gap-6 lg:grid-cols-[1fr_300px]"><div className="rounded-2xl border border-border bg-card p-5 md:p-8"><div className="mb-6 flex items-start justify-between"><div><h2 className="font-display text-2xl font-semibold">Review the record</h2><p className="mt-1 text-sm text-muted-foreground">Make sure these details match the source before creating.</p></div><StatusPill status="pending" label="Review required" /></div>{analysis?.products?.length ? <div className="mb-6 flex gap-2 overflow-x-auto pb-1">{analysis.products.map((product, index) => <button key={`${product.product}-${index}`} onClick={() => { setSelectedIndex(index); setForm({ ...form, product: product.product, brand: product.brand, model: product.model, serialNumber: product.serialNumber, category: product.category }); }} className={cx('min-w-[180px] rounded-xl border p-3 text-left transition', selectedIndex === index ? 'border-primary bg-secondary' : 'border-border hover:border-accent')} data-testid={`button-detected-product-${index}`}><div className="text-xs font-semibold">{product.product}</div><div className="mt-1 text-[11px] text-muted-foreground">{product.brand} · {product.model}</div></button>)}</div> : null}<div className="grid gap-4 sm:grid-cols-2">{(['product', 'brand', 'model', 'serialNumber', 'category', 'documentType', 'purchaseDate', 'seller', 'invoiceNumber', 'orderId'] as Array<keyof PassportInput>).map((key) => <label key={key} className="block"><span className="font-mono-ui text-[9px] uppercase tracking-[.16em] text-muted-foreground">{key.replace(/([A-Z])/g, ' $1')}</span><input value={String(form[key] ?? '')} onChange={(event) => updateForm(key, event.target.value)} className="mt-2 h-10 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-accent" data-testid={`input-create-${String(key)}`} /></label>)}</div><div className="mt-6 flex gap-2"><Button variant="secondary" onClick={() => setStep(1)} data-testid="button-back-upload"><ArrowLeft size={14} /> Back</Button><Button onClick={createRecord} disabled={create.isPending || !form.product} data-testid="button-create-passport">{create.isPending && <LoaderCircle className="animate-spin" size={14} />} Create passport <ArrowRight size={14} /></Button></div>{create.isError && <p className="mt-3 text-xs text-red-600" data-testid="text-create-error">Could not create this passport. Check the required fields and try again.</p>}</div><ProcessAside title="Source notes" items={[`Document type: ${analysis?.documentType || 'Detected'}`, `${analysis?.products?.length || 0} product signal${analysis?.products?.length === 1 ? '' : 's'} found`, 'You can edit this record later']} /></div>}
-    {step === 4 && created && <div className="mx-auto max-w-[650px] rounded-2xl border border-border bg-card p-8 text-center md:p-12"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-teal-100 text-teal-700"><Check size={30} /></div><div className="mt-6 font-mono-ui text-[10px] uppercase tracking-[.2em] text-teal-700">Passport created</div><h2 className="mt-2 font-display text-3xl font-semibold">{created.product}</h2><p className="mt-2 text-sm text-muted-foreground">The record is ready to verify and share with your team.</p><div className="mx-auto mt-6 max-w-xs rounded-xl bg-secondary p-3 text-left"><div className="font-mono-ui text-[9px] uppercase tracking-[.16em] text-muted-foreground">Passport ID</div><div className="mt-1 font-mono-ui text-sm font-medium" data-testid="text-created-passport-id">{created.passportId}</div></div><div className="mt-7 flex flex-col justify-center gap-2 sm:flex-row"><Link href={`/passports/${created.passportId}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground" data-testid="link-open-created-passport">Open passport <ArrowRight size={14} /></Link><Link href="/create" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold" data-testid="link-create-another">Create another</Link></div></div>}
-  </div>;
+  const hasPhysical = Boolean(physicalFile && physicalResult);
+
+  return (
+    <div className="mx-auto max-w-[1100px]">
+      <PageIntro
+        eyebrow="Create passport"
+        title="Turn evidence into identity."
+        description="Upload a product document and physical scan together to verify your product in a single step."
+      />
+
+      <div className="mb-8 flex items-center gap-2 overflow-x-auto pb-2">
+        {stepNames.map((name, index) => (
+          <div key={name} className="flex min-w-max items-center gap-2">
+            <div
+              className={cx(
+                'flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold',
+                step > index + 1 ? 'bg-teal-100 text-teal-700' : step === index + 1 ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+              )}
+            >
+              {step > index + 1 ? <Check size={14} /> : index + 1}
+            </div>
+            <span className={cx('text-xs font-semibold', step === index + 1 ? 'text-foreground' : 'text-muted-foreground')}>
+              {name}
+            </span>
+            {index < 3 && <div className="mx-1 h-px w-8 bg-border sm:w-16" />}
+          </div>
+        ))}
+      </div>
+
+      {step === 1 && (
+        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <div className="rounded-2xl border border-border bg-card p-5 md:p-8">
+            <div className="mb-6">
+              <h2 className="font-display text-2xl font-semibold">Start with a source</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Upload your document and physical product photo together to create and verify your identity in a single step.
+              </p>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="space-y-2">
+                <span className="flex items-center gap-1.5 font-mono-ui text-[10px] font-semibold uppercase tracking-[.14em] text-primary">
+                  <FileText size={13} /> 1. Purchase Document (Required)
+                </span>
+                <FileDrop
+                  label={file ? file.name : 'Upload a document'}
+                  hint={file ? 'Ready to analyze' : 'Invoice, receipt, warranty (PDF, JPG, PNG)'}
+                  onFile={onDocFile}
+                />
+                {file && (
+                  <div className="flex items-center justify-between rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-800">
+                    <span className="flex items-center gap-2 truncate">
+                      <FileCheck2 size={14} className="shrink-0" /> {file.name}
+                    </span>
+                    <button onClick={() => setFile(null)} aria-label="Remove source document" data-testid="button-remove-source">
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <span className="flex items-center gap-1.5 font-mono-ui text-[10px] font-semibold uppercase tracking-[.14em] text-accent">
+                  <Camera size={13} /> 2. Physical Product Photo (Optional)
+                </span>
+                <FileDrop
+                  label={physicalFile ? physicalFile.name : 'Upload product photo'}
+                  hint={physicalFile ? 'Product photo attached' : 'Device photo or camera capture (JPG, PNG)'}
+                  onFile={onPhysicalFile}
+                  capture
+                />
+                {physicalFile && (
+                  <div className="flex items-center justify-between rounded-xl border border-accent/40 bg-accent/15 px-3 py-2 text-xs text-primary">
+                    <span className="flex items-center gap-2 truncate">
+                      <ImageIcon size={14} className="shrink-0" /> {physicalFile.name}
+                    </span>
+                    <button onClick={() => setPhysicalFile(null)} aria-label="Remove product photo" data-testid="button-remove-physical">
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-xl border border-border bg-secondary/50 p-4">
+              <div className="flex items-start gap-3">
+                <ShieldCheck size={18} className="mt-0.5 shrink-0 text-teal-600" />
+                <div className="text-xs leading-relaxed text-muted-foreground">
+                  <span className="font-semibold text-foreground">Dual-Evidence Verification:</span> Providing both documents and photos allows Verid to extract warranty data and confirm the physical device with YOLO in one unified pass.
+                </div>
+              </div>
+            </div>
+
+            <Button
+              className="mt-6 w-full"
+              disabled={!file}
+              onClick={runAnalysis}
+              data-testid="button-analyze-document"
+            >
+              <Sparkles size={15} /> {physicalFile ? 'Analyze Document & Verify Physical Product' : 'Analyze Document'}
+            </Button>
+          </div>
+
+          <ProcessAside
+            title="What happens next"
+            items={[
+              'Document OCR extracts brand, model, serial, and dates',
+              physicalFile ? 'YOLO identifies the physical device from your photo' : 'You can optionally add a physical photo later',
+              'Review and verify everything together before saving',
+            ]}
+          />
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="rounded-2xl border border-border bg-card p-10 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/20 text-primary">
+            <Sparkles size={24} className="animate-spin" />
+          </div>
+          <h2 className="mt-5 font-display text-2xl font-semibold">Reading your evidence</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {physicalFile
+              ? 'Extracting document details via RapidOCR and scanning physical photo with YOLO…'
+              : 'Finding product signals and purchase details…'}
+          </p>
+          <div className="mx-auto mt-7 max-w-sm space-y-2 text-left">
+            <div className="skeleton h-3 rounded-full" />
+            <div className="skeleton h-3 w-4/5 rounded-full" />
+            <div className="skeleton h-3 w-3/5 rounded-full" />
+          </div>
+          {analyze.isError && (
+            <div className="mt-6">
+              <ErrorState label="The document could not be analyzed." onRetry={runAnalysis} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <div className="rounded-2xl border border-border bg-card p-5 md:p-8">
+            <div className="mb-6 flex items-start justify-between">
+              <div>
+                <h2 className="font-display text-2xl font-semibold">Review the record</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Make sure these details match your sources before creating.
+                </p>
+              </div>
+              <StatusPill
+                status={hasPhysical && autoVerify ? 'verified' : 'pending'}
+                label={hasPhysical && autoVerify ? 'Direct verification' : 'Review required'}
+              />
+            </div>
+
+            {analysis?.products?.length ? (
+              <div className="mb-6 flex gap-2 overflow-x-auto pb-1">
+                {analysis.products.map((product, index) => (
+                  <button
+                    key={`${product.product}-${index}`}
+                    onClick={() => {
+                      setSelectedIndex(index);
+                      setForm({
+                        ...form,
+                        product: product.product,
+                        brand: product.brand,
+                        model: product.model,
+                        serialNumber: product.serialNumber,
+                        category: product.category,
+                      });
+                    }}
+                    className={cx(
+                      'min-w-[180px] rounded-xl border p-3 text-left transition',
+                      selectedIndex === index ? 'border-primary bg-secondary' : 'border-border hover:border-accent'
+                    )}
+                    data-testid={`button-detected-product-${index}`}
+                  >
+                    <div className="text-xs font-semibold">{product.product}</div>
+                    <div className="mt-1 text-[11px] text-muted-foreground">
+                      {product.brand} · {product.model}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {(
+                [
+                  'product',
+                  'brand',
+                  'model',
+                  'serialNumber',
+                  'category',
+                  'documentType',
+                  'purchaseDate',
+                  'seller',
+                  'invoiceNumber',
+                  'orderId',
+                ] as Array<keyof PassportInput>
+              ).map((key) => (
+                <label key={key} className="block">
+                  <span className="font-mono-ui text-[9px] uppercase tracking-[.16em] text-muted-foreground">
+                    {key.replace(/([A-Z])/g, ' $1')}
+                  </span>
+                  <input
+                    value={String(form[key] ?? '')}
+                    onChange={(event) => updateForm(key, event.target.value)}
+                    className="mt-2 h-10 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-accent"
+                    data-testid={`input-create-${String(key)}`}
+                  />
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-6 flex gap-2">
+              <Button variant="secondary" onClick={() => setStep(1)} data-testid="button-back-upload">
+                <ArrowLeft size={14} /> Back
+              </Button>
+              <Button
+                onClick={createRecord}
+                disabled={create.isPending || !form.product}
+                data-testid="button-create-passport"
+              >
+                {create.isPending && <LoaderCircle className="animate-spin" size={14} />}
+                {hasPhysical && autoVerify ? 'Create & Verify Passport' : 'Create passport'} <ArrowRight size={14} />
+              </Button>
+            </div>
+
+            {create.isError && (
+              <p className="mt-3 text-xs text-red-600" data-testid="text-create-error">
+                Could not create this passport. Check the required fields and try again.
+              </p>
+            )}
+          </div>
+
+          <aside className="space-y-4">
+            {physicalFile && (
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display text-sm font-semibold">Physical Verification</h3>
+                  <StatusPill
+                    status={physicalResult?.confidence ? 'verified' : 'pending'}
+                    label={physicalResult?.confidence ? `${Math.round(physicalResult.confidence * 100)}% match` : 'Scanned'}
+                  />
+                </div>
+
+                <div className="mt-3 overflow-hidden rounded-xl bg-primary/5">
+                  <img
+                    src={physicalFile.content}
+                    alt="Physical scan preview"
+                    className="h-36 w-full object-contain"
+                  />
+                </div>
+
+                {physicalResult && (
+                  <div className="mt-3 space-y-2 text-xs">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Detected:</span>
+                      <span className="font-semibold text-foreground">{physicalResult.detectedProduct}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Form factor:</span>
+                      <span className="font-semibold text-foreground">{physicalResult.category}</span>
+                    </div>
+                  </div>
+                )}
+
+                <label className="mt-4 flex cursor-pointer items-center gap-2 rounded-xl bg-secondary p-3 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={autoVerify}
+                    onChange={(e) => setAutoVerify(e.target.checked)}
+                    className="rounded text-primary focus:ring-accent"
+                  />
+                  <span className="font-medium text-foreground">Attach scan and verify identity now</span>
+                </label>
+              </div>
+            )}
+
+            <ProcessAside
+              title="Source notes"
+              items={[
+                `Document type: ${analysis?.documentType || 'Detected'}`,
+                `${analysis?.products?.length || 0} product signal${analysis?.products?.length === 1 ? '' : 's'} found`,
+                physicalFile ? 'Physical product photo will be permanently linked' : 'You can link physical photos later via Scan Product',
+              ]}
+            />
+          </aside>
+        </div>
+      )}
+
+      {step === 4 && created && (
+        <div className="mx-auto max-w-[650px] rounded-2xl border border-border bg-card p-8 text-center md:p-12">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-teal-100 text-teal-700">
+            <Check size={30} />
+          </div>
+          <div className="mt-6 font-mono-ui text-[10px] uppercase tracking-[.2em] text-teal-700">
+            {created.verificationStatus === 'verified' ? 'Passport Created & Physically Verified' : 'Passport Created'}
+          </div>
+          <h2 className="mt-2 font-display text-3xl font-semibold">{created.product}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {created.verificationStatus === 'verified'
+              ? 'Your product identity is verified with physical scan evidence attached.'
+              : 'The record is ready to verify and share with your team.'}
+          </p>
+
+          <div className="mx-auto mt-6 max-w-xs rounded-xl bg-secondary p-3 text-left">
+            <div className="font-mono-ui text-[9px] uppercase tracking-[.16em] text-muted-foreground">Passport ID</div>
+            <div className="mt-1 font-mono-ui text-sm font-medium" data-testid="text-created-passport-id">
+              {created.passportId}
+            </div>
+            {created.physicalScanDate && (
+              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-teal-700">
+                <BadgeCheck size={14} /> Physically verified
+              </div>
+            )}
+          </div>
+
+          <div className="mt-7 flex flex-col justify-center gap-2 sm:flex-row">
+            <Link
+              href={`/passports/${created.passportId}`}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
+              data-testid="link-open-created-passport"
+            >
+              Open passport <ArrowRight size={14} />
+            </Link>
+            <Link
+              href="/create"
+              onClick={() => {
+                setStep(1);
+                setFile(null);
+                setPhysicalFile(null);
+                setAnalysis(null);
+                setPhysicalResult(null);
+                setCreated(null);
+                setForm({});
+              }}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold"
+              data-testid="link-create-another"
+            >
+              Create another
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ProcessAside({ title, items }: { title: string; items: string[] }) {

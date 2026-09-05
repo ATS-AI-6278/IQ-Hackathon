@@ -71,7 +71,11 @@ export const CreatePassportBody = zod.object({
   "customerName": zod.string().nullish(),
   "orderId": zod.string().nullish(),
   "invoiceNumber": zod.string().nullish(),
-  "sourceDocument": zod.string().nullish()
+  "sourceDocument": zod.string().nullish(),
+  "physicalProductImage": zod.string().nullish(),
+  "physicalScanDate": zod.string().nullish(),
+  "matchConfidence": zod.number().nullish(),
+  "verificationStatus": zod.enum(['pending', 'verified']).optional()
 })
 
 export const CreatePassportResponse = zod.object({

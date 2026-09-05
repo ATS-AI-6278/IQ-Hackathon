@@ -79,6 +79,13 @@ export interface PassportInput {
   invoiceNumber?: string | null;
   /** @nullable */
   sourceDocument?: string | null;
+  /** @nullable */
+  physicalProductImage?: string | null;
+  /** @nullable */
+  physicalScanDate?: string | null;
+  /** @nullable */
+  matchConfidence?: number | null;
+  verificationStatus?: 'pending' | 'verified';
 }
 
 export interface PassportUpdate {
