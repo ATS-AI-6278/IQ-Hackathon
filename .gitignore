@@ -35,3 +35,7 @@ pnpm-debug.log*
 runs/
 Model/runs/custom_appliances/val_batch*
 Model/runs/custom_appliances/train_batch*
+
+# Office temp lock files
+~$*
+
