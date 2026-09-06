@@ -44,7 +44,7 @@ Every appliance becomes an intelligent multi-node entity:
 ---
 
 ### 2. “Ask My House” — Natural Language Conversational Interface
-Grounded exclusively in the user's actual household memory with zero fabrication:
+Runs entirely locally but has complete absolute knowledge of everything in your house, including spatial awareness (e.g. knowing where bills, documents, and appliances are located) and dynamically adjusting advice based on seasons and external factors. Grounded exclusively in the user's actual household memory with zero fabrication:
 * *“When does my washing machine warranty expire?”* $\rightarrow$ August 12, 2028 (187 days remaining).
 * *“Which products need maintenance this month?”* $\rightarrow$ Water purifier carbon filter at 8% life; AC filter flush overdue.
 * *“Show everything I bought this year.”* $\rightarrow$ Correlates invoices across rooms.
@@ -258,10 +258,11 @@ Or open the **Trust Center** in your browser at:
 
 ---
 
-## 7. The 22-Slide Master Presentation Deck
+## 7. The 22-Slide Master & Advanced Presentation Decks
 
-The official presentation file is:
-`Smart_Product_Passport_Project_Presentation.pptx` (5.34 MB, 22 slides)
+The official presentation files are:
+1. `Smart_Product_Passport_Project_Presentation.pptx` (Standard Theme)
+2. `Smart_Product_Passport_Advanced.pptx` (Next-Gen Dark Mode Theme)
 
 Copies are synced across:
 * `c:\Users\acer\Pictures\IQ\Smart_Product_Passport_Project_Presentation.pptx`

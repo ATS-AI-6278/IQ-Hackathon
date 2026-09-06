@@ -1,0 +1,138 @@
+{"kind":"deck","id":"pr/7cdadr","name":"Deck"}
+{"kind":"layout","layoutId":"0a99813a-b9c6-4b76-a840-bcd3a069dfd3","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"56c9cf1b-0dbf-42a2-9086-84ad45b4a6a9","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/21d1d8","slide":1,"title":"VERID / HOUSEHOLD INTELLIGENCE OS","textShapes":7}
+{"kind":"textbox","id":"sh/43qhkv61","slide":1,"text":"VERID / HOUSEHOLD INTELLIGENCE OS","textPreview":"VERID / HOUSEHOLD INTELLIGENCE OS","textChars":33,"textLines":1,"bbox":[54,676,490,18]}
+{"kind":"textbox","id":"sh/32xgbq5g","slide":1,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[1170,676,56,18]}
+{"kind":"shape","id":"sh/21ozilov","slide":1,"bbox":[0,0,1280,720]}
+{"kind":"shape","id":"sh/gz6hgb65","slide":1,"bbox":[690,0,220,720]}
+{"kind":"textbox","id":"sh/fyxg765k","slide":1,"text":"IQOO HACKATHON 2026 / AI TRACK","textPreview":"IQOO HACKATHON 2026 / AI TRACK","textChars":30,"textLines":1,"bbox":[58,46,450,22]}
+{"kind":"textbox","id":"sh/uxoze1oz","slide":1,"text":"Your home has memory.\nIt just needs a system.","textPreview":"Your home has memory. | It just needs a system.","textChars":45,"textLines":2,"bbox":[58,106,655,115]}
+{"kind":"textbox","id":"sh/1wjilknu","slide":1,"text":"Verid connects products, invoices, manuals, and maintenance into a private household intelligence layer.","textPreview":"Verid connects products, invoices, manuals, and maintenance into a private household intelligence layer.","textChars":104,"textLines":1,"bbox":[58,304,570,80]}
+{"kind":"shape","id":"sh/0vahsf69","slide":1,"bbox":[58,430,514,2]}
+{"kind":"textbox","id":"sh/6ps76xw7","slide":1,"text":"Verified ownership\nActionable care\nPrivate AI","textPreview":"Verified ownership | Actionable care | Private AI","textChars":45,"textLines":3,"bbox":[58,456,450,100]}
+{"kind":"textbox","id":"sh/7q1oz2xc","slide":1,"text":"A working product for the moment homeowners need it most: when something breaks, expires, or gets forgotten.","textPreview":"A working product for the moment homeowners need it most: when something breaks, expires, or gets forgotten.","textChars":108,"textLines":1,"bbox":[58,585,555,52]}
+{"kind":"image","id":"im/ovu5cv2h","slide":1,"name":"","geometry":"roundRect","alt":"AI illustration of a connected household product graph","bbox":[766,0,514,720]}
+{"kind":"notes","id":"nt/21d1d8","slide":1,"text":"Source: PROJECT_DOCUMENTATION.md, Team Verid, iQOO Hackathon 2026. Project screenshots are supplied by the team."}
+{"kind":"slide","id":"sl/br6jx5","slide":2,"title":"VERID / HOUSEHOLD INTELLIGENCE OS","textShapes":15}
+{"kind":"textbox","id":"sh/zydofahk","slide":2,"text":"VERID / HOUSEHOLD INTELLIGENCE OS","textPreview":"VERID / HOUSEHOLD INTELLIGENCE OS","textChars":33,"textLines":1,"bbox":[54,676,490,18]}
+{"kind":"textbox","id":"sh/0zmpofip","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1170,676,56,18]}
+{"kind":"textbox","id":"sh/l0v6hkza","slide":2,"text":"THE HOUSEHOLD OWNERSHIP GAP","textPreview":"THE HOUSEHOLD OWNERSHIP GAP","textChars":27,"textLines":1,"bbox":[58,45,450,22]}
+{"kind":"textbox","id":"sh/q9kni50n","slide":2,"text":"A product’s history disappears the moment it enters the home","textPreview":"A product’s history disappears the moment it enters the home","textChars":60,"textLines":1,"bbox":[58,80,860,115]}
+{"kind":"textbox","id":"sh/batobah8","slide":2,"text":"Documents, hardware evidence, and service events live apart. That makes a simple warranty claim or maintenance decision unnecessarily hard.","textPreview":"Documents, hardware evidence, and service events live apart. That makes a simple warranty claim or maintenance decision unnecessarily hard.","textChars":139,"textLines":1,"bbox":[58,186,865,50]}
+{"kind":"shape","id":"sh/cv25kfit","slide":2,"bbox":[58,316,348,215]}
+{"kind":"textbox","id":"sh/dwb6d0ze","slide":2,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[82,340,45,28]}
+{"kind":"textbox","id":"sh/a5o7up07","slide":2,"text":"Proof is scattered","textPreview":"Proof is scattered","textChars":18,"textLines":1,"bbox":[82,382,285,36]}
+{"kind":"textbox","id":"sh/v6xonuhs","slide":2,"text":"Invoices sit in chat threads, folders, and drawers while model and serial details fade from view.","textPreview":"Invoices sit in chat threads, folders, and drawers while model and serial details fade from view.","textChars":97,"textLines":1,"bbox":[82,432,282,65]}
+{"kind":"shape","id":"sh/nmt8n29o","slide":2,"bbox":[440,316,348,215]}
+{"kind":"textbox","id":"sh/mlk7ex83","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[464,340,45,28]}
+{"kind":"textbox","id":"sh/9obqpcru","slide":2,"text":"Care arrives too late","textPreview":"Care arrives too late","textChars":21,"textLines":1,"bbox":[464,382,285,36]}
+{"kind":"textbox","id":"sh/on2pg7q9","slide":2,"text":"Warranty deadlines, filters, cleaning, and service history surface only after a failure.","textPreview":"Warranty deadlines, filters, cleaning, and service history surface only after a failure.","textChars":88,"textLines":1,"bbox":[464,432,282,65]}
+{"kind":"shape","id":"sh/bqt8r290","slide":2,"bbox":[822,316,348,215]}
+{"kind":"textbox","id":"sh/apkrix8f","slide":2,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[846,340,45,28]}
+{"kind":"textbox","id":"sh/xsvqtcrq","slide":2,"text":"Files cannot answer","textPreview":"Files cannot answer","textChars":19,"textLines":1,"bbox":[846,382,285,36]}
+{"kind":"textbox","id":"sh/wr29k7q5","slide":2,"text":"A storage folder cannot connect a real appliance to evidence, a manual, and the next action.","textPreview":"A storage folder cannot connect a real appliance to evidence, a manual, and the next action.","textChars":92,"textLines":1,"bbox":[846,432,282,65]}
+{"kind":"textbox","id":"sh/jed8vmpw","slide":2,"text":"The missed opportunity: turn ownership records into a reliable, usable household memory.","textPreview":"The missed opportunity: turn ownership records into a reliable, usable household memory.","textChars":88,"textLines":1,"bbox":[58,584,1000,42]}
+{"kind":"notes","id":"nt/br6jx5","slide":2,"text":"Source: PROJECT_DOCUMENTATION.md, Team Verid, iQOO Hackathon 2026. Project screenshots are supplied by the team."}
+{"kind":"slide","id":"sl/zcht1g","slide":3,"title":"VERID / HOUSEHOLD INTELLIGENCE OS","textShapes":11}
+{"kind":"textbox","id":"sh/bul0j2lo","slide":3,"text":"VERID / HOUSEHOLD INTELLIGENCE OS","textPreview":"VERID / HOUSEHOLD INTELLIGENCE OS","textChars":33,"textLines":1,"bbox":[54,676,490,18]}
+{"kind":"textbox","id":"sh/cfuhs7m9","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1170,676,56,18]}
+{"kind":"textbox","id":"sh/xg3ilc3u","slide":3,"text":"THE CORE PRODUCT","textPreview":"THE CORE PRODUCT","textChars":16,"textLines":1,"bbox":[58,45,450,22]}
+{"kind":"textbox","id":"sh/2pszmx47","slide":3,"text":"One verified passport for every important product","textPreview":"One verified passport for every important product","textChars":49,"textLines":1,"bbox":[58,80,800,115]}
+{"kind":"textbox","id":"sh/nqlgf2ls","slide":3,"text":"Verid pairs commercial evidence with a real product photo before it creates a household record.","textPreview":"Verid pairs commercial evidence with a real product photo before it creates a household record.","textChars":95,"textLines":1,"bbox":[58,185,760,40]}
+{"kind":"textbox","id":"sh/mlwzy14b","slide":3,"text":"DOCUMENT\nEVIDENCE","textPreview":"DOCUMENT | EVIDENCE","textChars":17,"textLines":2,"bbox":[58,538,245,44]}
+{"kind":"textbox","id":"sh/7m50rmlw","slide":3,"text":"HARDWARE\nEVIDENCE","textPreview":"HARDWARE | EVIDENCE","textChars":17,"textLines":2,"bbox":[332,538,245,44]}
+{"kind":"textbox","id":"sh/fe5cjudk","slide":3,"text":"+","textPreview":"+","textChars":1,"textLines":1,"bbox":[608,355,44,56]}
+{"kind":"shape","id":"sh/edwbapwz","slide":3,"bbox":[665,287,206,207]}
+{"kind":"textbox","id":"sh/1g7ul4vq","slide":3,"text":"RapidOCR\n+ YOLO","textPreview":"RapidOCR | + YOLO","textChars":15,"textLines":2,"bbox":[689,323,158,65]}
+{"kind":"textbox","id":"sh/gfetcze5","slide":3,"text":"Extracts facts\nChecks the physical object","textPreview":"Extracts facts | Checks the physical object","textChars":41,"textLines":2,"bbox":[686,413,164,46]}
+{"kind":"textbox","id":"sh/2hgbepwv","slide":3,"text":"A durable record with evidence, identity, warranty, manual, service history, and next actions.","textPreview":"A durable record with evidence, identity, warranty, manual, service history, and next actions.","textChars":94,"textLines":1,"bbox":[670,548,520,44]}
+{"kind":"image","id":"im/x03it4vi","slide":3,"name":"","geometry":"roundRect","alt":"Warranty document source","bbox":[58,275,245,250]}
+{"kind":"image","id":"im/czuh0zux","slide":3,"name":"","geometry":"roundRect","alt":"Physical appliance photo source","bbox":[332,275,245,250]}
+{"kind":"image","id":"im/4va98jq9","slide":3,"name":"","geometry":"roundRect","alt":"Verified product passport","bbox":[920,218,295,345]}
+{"kind":"notes","id":"nt/zcht1g","slide":3,"text":"Source: PROJECT_DOCUMENTATION.md, Team Verid, iQOO Hackathon 2026. Project screenshots are supplied by the team."}
+{"kind":"slide","id":"sl/n7dhio","slide":4,"title":"VERID / HOUSEHOLD INTELLIGENCE OS","textShapes":13}
+{"kind":"textbox","id":"sh/fmdsb6tk","slide":4,"text":"VERID / HOUSEHOLD INTELLIGENCE OS","textPreview":"VERID / HOUSEHOLD INTELLIGENCE OS","textChars":33,"textLines":1,"bbox":[54,676,490,18]}
+{"kind":"textbox","id":"sh/0nmtkba5","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1170,676,56,18]}
+{"kind":"textbox","id":"sh/1ovadgbq","slide":4,"text":"COMPUTER VISION PROOF","textPreview":"COMPUTER VISION PROOF","textChars":21,"textLines":1,"bbox":[58,45,450,22]}
+{"kind":"textbox","id":"sh/qx4re1s3","slide":4,"text":"The vision model recognizes the physical side of ownership","textPreview":"The vision model recognizes the physical side of ownership","textChars":58,"textLines":1,"bbox":[58,80,815,115]}
+{"kind":"textbox","id":"sh/rids76to","slide":4,"text":"A custom YOLOv8n detector identifies five household classes from real images, then connects the result to the relevant passport.","textPreview":"A custom YOLOv8n detector identifies five household classes from real images, then connects the result to the relevant passport.","textChars":128,"textLines":1,"bbox":[58,183,800,42]}
+{"kind":"textbox","id":"sh/sjmtgba9","slide":4,"text":"99.29%","textPreview":"99.29%","textChars":6,"textLines":1,"bbox":[58,265,235,48]}
+{"kind":"textbox","id":"sh/dkva9gbu","slide":4,"text":"Precision on the validation split","textPreview":"Precision on the validation split","textChars":33,"textLines":1,"bbox":[58,313,235,38]}
+{"kind":"textbox","id":"sh/itkrahs7","slide":4,"text":"98.10%","textPreview":"98.10%","textChars":6,"textLines":1,"bbox":[325,265,265,48]}
+{"kind":"textbox","id":"sh/3uts3mtc","slide":4,"text":"mAP@50 across five target classes","textPreview":"mAP@50 across five target classes","textChars":33,"textLines":1,"bbox":[325,313,265,38]}
+{"kind":"textbox","id":"sh/vahwnah8","slide":4,"text":"69-97 ms","textPreview":"69-97 ms","textChars":8,"textLines":1,"bbox":[622,265,265,48]}
+{"kind":"textbox","id":"sh/u9ove50n","slide":4,"text":"Per-image CPU inference latency","textPreview":"Per-image CPU inference latency","textChars":31,"textLines":1,"bbox":[622,313,265,38]}
+{"kind":"shape","id":"sh/jehwruhk","slide":4,"bbox":[968,385,250,235]}
+{"kind":"textbox","id":"sh/id8vip0z","slide":4,"text":"Target classes","textPreview":"Target classes","textChars":14,"textLines":1,"bbox":[994,414,200,28]}
+{"kind":"textbox","id":"sh/5gzetkza","slide":4,"text":"AC\nWashing machine\nCloset\nWater purifier\nCot","textPreview":"AC | Washing machine | Closet | Water purifier | Cot","textChars":44,"textLines":5,"bbox":[994,460,190,122]}
+{"kind":"image","id":"im/i9sf61c3","slide":4,"name":"","geometry":"roundRect","alt":"Confusion matrix from the custom appliance detector","bbox":[58,385,420,235]}
+{"kind":"image","id":"im/ja1wfmto","slide":4,"name":"","geometry":"roundRect","alt":"Training metric curves from the custom appliance detector","bbox":[515,385,420,235]}
+{"kind":"notes","id":"nt/n7dhio","slide":4,"text":"Source: PROJECT_DOCUMENTATION.md, Team Verid, iQOO Hackathon 2026. Project screenshots are supplied by the team."}
+{"kind":"slide","id":"sl/7mdpba","slide":5,"title":"VERID / HOUSEHOLD INTELLIGENCE OS","textShapes":9}
+{"kind":"textbox","id":"sh/5ovu90zm","slide":5,"text":"VERID / HOUSEHOLD INTELLIGENCE OS","textPreview":"VERID / HOUSEHOLD INTELLIGENCE OS","textChars":33,"textLines":1,"bbox":[54,676,490,18]}
+{"kind":"textbox","id":"sh/il4vylgv","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1170,676,56,18]}
+{"kind":"textbox","id":"sh/jmdc7qhg","slide":5,"text":"THE DAILY EXPERIENCE","textPreview":"THE DAILY EXPERIENCE","textChars":20,"textLines":1,"bbox":[58,45,450,22]}
+{"kind":"textbox","id":"sh/wzmdwbip","slide":5,"text":"Point. Ask. Act.","textPreview":"Point. Ask. Act.","textChars":16,"textLines":1,"bbox":[58,82,460,115]}
+{"kind":"textbox","id":"sh/xkvu5gza","slide":5,"text":"A household record is only useful when it answers a question in the moment.","textPreview":"A household record is only useful when it answers a question in the moment.","textChars":75,"textLines":1,"bbox":[58,178,500,46]}
+{"kind":"textbox","id":"sh/9wbu1gze","slide":5,"text":"See the appliance","textPreview":"See the appliance","textChars":17,"textLines":1,"bbox":[58,567,355,26]}
+{"kind":"textbox","id":"sh/9cvm5kbi","slide":5,"text":"Find what needs attention","textPreview":"Find what needs attention","textChars":25,"textLines":1,"bbox":[447,567,355,26]}
+{"kind":"textbox","id":"sh/8bmlwfux","slide":5,"text":"Ask the whole house","textPreview":"Ask the whole house","textChars":19,"textLines":1,"bbox":[836,567,356,26]}
+{"kind":"textbox","id":"sh/nat43atc","slide":5,"text":"“When does my washing machine warranty expire?”","textPreview":"“When does my washing machine warranty expire?”","textChars":47,"textLines":1,"bbox":[58,626,550,28]}
+{"kind":"image","id":"im/rq5ozuhk","slide":5,"name":"","geometry":"roundRect","alt":"Point-and-Ask augmented-reality appliance view","bbox":[58,270,355,275]}
+{"kind":"image","id":"im/qpwnqp0f","slide":5,"name":"","geometry":"roundRect","alt":"Household health and attention center","bbox":[447,270,355,275]}
+{"kind":"image","id":"im/twj6p0zm","slide":5,"name":"","geometry":"roundRect","alt":"Household dashboard overview","bbox":[836,270,356,275]}
+{"kind":"notes","id":"nt/7mdpba","slide":5,"text":"Source: PROJECT_DOCUMENTATION.md, Team Verid, iQOO Hackathon 2026. Project screenshots are supplied by the team."}
+{"kind":"slide","id":"sl/6rwfc0","slide":6,"title":"VERID / HOUSEHOLD INTELLIGENCE OS","textShapes":12}
+{"kind":"textbox","id":"sh/gfepcbuh","slide":6,"text":"VERID / HOUSEHOLD INTELLIGENCE OS","textPreview":"VERID / HOUSEHOLD INTELLIGENCE OS","textChars":33,"textLines":1,"bbox":[54,676,490,18]}
+{"kind":"textbox","id":"sh/fe58j6dw","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1170,676,56,18]}
+{"kind":"textbox","id":"sh/etw7a1wr","slide":6,"text":"TRUST IS A PRODUCT FEATURE","textPreview":"TRUST IS A PRODUCT FEATURE","textChars":26,"textLines":1,"bbox":[58,45,450,22]}
+{"kind":"textbox","id":"sh/tsn6hwv6","slide":6,"text":"Every answer carries its evidence","textPreview":"Every answer carries its evidence","textChars":33,"textLines":1,"bbox":[58,80,650,115]}
+{"kind":"textbox","id":"sh/srep8rel","slide":6,"text":"Verid shows the answer, why it reached it, and the source record. When the system cannot verify a detail, it says so.","textPreview":"Verid shows the answer, why it reached it, and the source record. When the system cannot verify a detail, it says so.","textChars":117,"textLines":1,"bbox":[58,182,735,50]}
+{"kind":"textbox","id":"sh/5o36dwvu","slide":6,"text":"Evidence","textPreview":"Evidence","textChars":8,"textLines":1,"bbox":[620,286,165,25]}
+{"kind":"textbox","id":"sh/4nup4re9","slide":6,"text":"Invoice, product photo, manual, service log","textPreview":"Invoice, product photo, manual, service log","textChars":43,"textLines":1,"bbox":[620,318,188,42]}
+{"kind":"textbox","id":"sh/atkja987","slide":6,"text":"Reasoning","textPreview":"Reasoning","textChars":9,"textLines":1,"bbox":[620,381,165,25]}
+{"kind":"textbox","id":"sh/vut03e9s","slide":6,"text":"A plain-language explanation for each result","textPreview":"A plain-language explanation for each result","textChars":44,"textLines":1,"bbox":[620,413,188,42]}
+{"kind":"textbox","id":"sh/wv21cjqd","slide":6,"text":"Provenance","textPreview":"Provenance","textChars":10,"textLines":1,"bbox":[620,476,165,25]}
+{"kind":"textbox","id":"sh/xwb254ri","slide":6,"text":"Traceable source record and confidence check","textPreview":"Traceable source record and confidence check","textChars":44,"textLines":1,"bbox":[620,508,188,42]}
+{"kind":"textbox","id":"sh/m5kj6p8v","slide":6,"text":"Offline mode keeps household data local while the system processes documents and answers questions.","textPreview":"Offline mode keeps household data local while the system processes documents and answers questions.","textChars":99,"textLines":1,"bbox":[58,615,930,34]}
+{"kind":"image","id":"im/mpcnapkz","slide":6,"name":"","geometry":"roundRect","alt":"Trust center product screen","bbox":[58,270,510,290]}
+{"kind":"image","id":"im/7qlojul4","slide":6,"name":"","geometry":"roundRect","alt":"Digital product passport certificate and seal","bbox":[840,235,333,355]}
+{"kind":"notes","id":"nt/6rwfc0","slide":6,"text":"Source: PROJECT_DOCUMENTATION.md, Team Verid, iQOO Hackathon 2026. Project screenshots are supplied by the team."}
+{"kind":"slide","id":"sl/p4mo2c","slide":7,"title":"VERID / HOUSEHOLD INTELLIGENCE OS","textShapes":17}
+{"kind":"textbox","id":"sh/ju9ofuts","slide":7,"text":"VERID / HOUSEHOLD INTELLIGENCE OS","textPreview":"VERID / HOUSEHOLD INTELLIGENCE OS","textChars":33,"textLines":1,"bbox":[54,676,490,18]}
+{"kind":"textbox","id":"sh/kv2pozud","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1170,676,56,18]}
+{"kind":"textbox","id":"sh/lwb6h4by","slide":7,"text":"LIVE DEMO","textPreview":"LIVE DEMO","textChars":9,"textLines":1,"bbox":[58,45,450,22]}
+{"kind":"textbox","id":"sh/a507ipcb","slide":7,"text":"Three minutes to show the complete loop","textPreview":"Three minutes to show the complete loop","textChars":39,"textLines":1,"bbox":[58,80,740,115]}
+{"kind":"textbox","id":"sh/b69obudg","slide":7,"text":"The demo makes the product tangible: capture evidence, recognize the appliance, prove the passport, then trigger an action.","textPreview":"The demo makes the product tangible: capture evidence, recognize the appliance, prove the passport, then trigger an action.","textChars":123,"textLines":1,"bbox":[58,184,830,40]}
+{"kind":"textbox","id":"sh/w7ipkzu1","slide":7,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[58,300,42,34]}
+{"kind":"textbox","id":"sh/x8r6d4bm","slide":7,"text":"Connect a phone","textPreview":"Connect a phone","textChars":15,"textLines":1,"bbox":[58,338,240,32]}
+{"kind":"textbox","id":"sh/u1k7utcf","slide":7,"text":"Scan the local QR bridge and open the live camera, with no app installation.","textPreview":"Scan the local QR bridge and open the live camera, with no app installation.","textChars":76,"textLines":1,"bbox":[58,376,240,68]}
+{"kind":"textbox","id":"sh/v2d8net0","slide":7,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[344,300,42,34]}
+{"kind":"textbox","id":"sh/7etczup8","slide":7,"text":"Point at a product","textPreview":"Point at a product","textChars":18,"textLines":1,"bbox":[344,338,240,32]}
+{"kind":"textbox","id":"sh/6dkvqpon","slide":7,"text":"The detector recognizes the appliance and retrieves its linked household passport.","textPreview":"The detector recognizes the appliance and retrieves its linked household passport.","textChars":82,"textLines":1,"bbox":[344,376,240,68]}
+{"kind":"textbox","id":"sh/tgbe1k7e","slide":7,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[630,300,42,34]}
+{"kind":"textbox","id":"sh/sf2dsz6t","slide":7,"text":"Inspect the proof","textPreview":"Inspect the proof","textChars":17,"textLines":1,"bbox":[630,338,240,32]}
+{"kind":"textbox","id":"sh/f2tw3up4","slide":7,"text":"Show the evidence-backed record, warranty status, and source documents.","textPreview":"Show the evidence-backed record, warranty status, and source documents.","textChars":71,"textLines":1,"bbox":[630,376,240,68]}
+{"kind":"textbox","id":"sh/e1kvupoj","slide":7,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[916,300,42,34]}
+{"kind":"textbox","id":"sh/14be547a","slide":7,"text":"Take the next action","textPreview":"Take the next action","textChars":20,"textLines":1,"bbox":[916,338,245,32]}
+{"kind":"textbox","id":"sh/g32dwz6p","slide":7,"text":"Surface a maintenance alert or prepare a complete warranty claim pack.","textPreview":"Surface a maintenance alert or prepare a complete warranty claim pack.","textChars":70,"textLines":1,"bbox":[916,376,245,68]}
+{"kind":"image","id":"im/wzql4na1","slide":7,"name":"","geometry":"roundRect","alt":"Phone QR bridge screen","bbox":[58,487,305,140]}
+{"kind":"image","id":"im/x0z2xsbm","slide":7,"name":"","geometry":"roundRect","alt":"Live appliance scanner match result","bbox":[405,487,305,140]}
+{"kind":"image","id":"im/dkralkzy","slide":7,"name":"","geometry":"roundRect","alt":"OCR and YOLO review screen","bbox":[752,487,405,140]}
+{"kind":"notes","id":"nt/p4mo2c","slide":7,"text":"Source: PROJECT_DOCUMENTATION.md, Team Verid, iQOO Hackathon 2026. Project screenshots are supplied by the team."}
+{"kind":"slide","id":"sl/wj3cnp","slide":8,"title":"VERID / HOUSEHOLD INTELLIGENCE OS","textShapes":10}
+{"kind":"textbox","id":"sh/d0ra90zy","slide":8,"text":"VERID / HOUSEHOLD INTELLIGENCE OS","textPreview":"VERID / HOUSEHOLD INTELLIGENCE OS","textChars":33,"textLines":1,"bbox":[54,676,490,18]}
+{"kind":"textbox","id":"sh/qx0ryl07","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1170,676,56,18]}
+{"kind":"shape","id":"sh/ry9s7qhs","slide":8,"bbox":[0,0,1280,720]}
+{"kind":"textbox","id":"sh/14badkzu","slide":8,"text":"WHY VERID","textPreview":"WHY VERID","textChars":9,"textLines":1,"bbox":[58,58,450,22]}
+{"kind":"textbox","id":"sh/e10r2503","slide":8,"text":"A real household system,\nnot another document folder.","textPreview":"A real household system, | not another document folder.","textChars":53,"textLines":2,"bbox":[58,97,635,115]}
+{"kind":"textbox","id":"sh/f29sbaho","slide":8,"text":"Verid combines working vision, document intelligence, grounded assistance, and on-device privacy into one connected experience.","textPreview":"Verid combines working vision, document intelligence, grounded assistance, and on-device privacy into one connected experience.","textChars":127,"textLines":1,"bbox":[58,298,590,68]}
+{"kind":"shape","id":"sh/g7y9sbi5","slide":8,"bbox":[58,416,526,2]}
+{"kind":"textbox","id":"sh/h87a1gjq","slide":8,"text":"Working demo","textPreview":"Working demo","textChars":12,"textLines":1,"bbox":[58,452,238,48]}
+{"kind":"textbox","id":"sh/9gza903u","slide":8,"text":"Phone-first scanner, product passport, attention center","textPreview":"Phone-first scanner, product passport, attention center","textChars":55,"textLines":1,"bbox":[58,500,238,38]}
+{"kind":"textbox","id":"sh/8fq90vm9","slide":8,"text":"Verified ML","textPreview":"Verified ML","textChars":11,"textLines":1,"bbox":[328,452,260,48]}
+{"kind":"textbox","id":"sh/7exs7qlo","slide":8,"text":"98.10% mAP@50 on the supplied validation split","textPreview":"98.10% mAP@50 on the supplied validation split","textChars":46,"textLines":1,"bbox":[328,500,260,38]}
+{"kind":"textbox","id":"sh/mdoryl43","slide":8,"text":"Team Verid / Ready to show the household intelligence loop live","textPreview":"Team Verid / Ready to show the household intelligence loop live","textChars":63,"textLines":1,"bbox":[58,616,630,28]}
+{"kind":"image","id":"im/t8j2lgn6","slide":8,"name":"","geometry":"roundRect","alt":"Verid product intake screen","bbox":[793,85,415,503]}
+{"kind":"notes","id":"nt/wj3cnp","slide":8,"text":"Source: PROJECT_DOCUMENTATION.md, Team Verid, iQOO Hackathon 2026. Project screenshots are supplied by the team."}
