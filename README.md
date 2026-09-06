@@ -99,15 +99,24 @@ pip install -r apps/ai-service/requirements.txt
 
 ### 2. Run All Services in Development Mode
 
+#### 🚀 Option A: Run All 3 Simultaneously in ONE Command (Recommended)
 ```bash
-# Start Node API Server (Port 5000)
+pnpm dev:all
+# or
+pnpm start:all
+```
+*(Or simply double-click `run.bat` or run `.\run.ps1` in PowerShell)*
+
+#### Option B: Run in Separate Terminals
+```bash
+# Terminal 1: Python AI Service (Port 8000)
+pnpm dev:ai
+
+# Terminal 2: Node API Server (Port 5000)
 pnpm dev:api
 
-# Start Web UI (Port 5173, with proxy to :5000)
+# Terminal 3: Web UI (Port 5173, with proxy to :5000)
 pnpm dev:web
-
-# Start Python AI Service (Port 8000, optional — CLI bridge runs automatically if not started)
-pnpm dev:ai
 ```
 
 ### 3. Build for Production

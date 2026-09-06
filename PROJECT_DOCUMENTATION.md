@@ -123,26 +123,41 @@ pip install -r requirements.txt
 
 ### Step 2: Start the Services
 
-The application consists of three services running concurrently. You can start each in its own terminal window or shell.
-
-#### Terminal 1: Start the Python AI Microservice (Port 8000)
+#### 🚀 Instant One-Command Start (Recommended):
+You can now run all 3 services simultaneously in a single terminal with one command:
 ```bash
-cd c:\Users\acer\Pictures\IQ\apps\ai-service
-python -m uvicorn app.main:app --port 8000
+pnpm dev:all
+# or
+pnpm start:all
 ```
-> **What this does**: Boots FastAPI, pre-warms the custom appliance YOLO detector and RapidOCR engine, and serves `/analyze-document`, `/identify-product`, and `/status`.
+> **What this does**: Automatically starts the Python AI Microservice (Port 8000), Express API Gateway (Port 5000), and Vite Web Frontend (Port 5173) concurrently in a single terminal window with colored logs (`[AI]`, `[API]`, `[WEB]`). Pressing `Ctrl+C` terminates all three cleanly.
 
-#### Terminal 2: Start the Express API Backend (Port 5000)
+#### 🪟 Windows Shortcut (Zero Typing):
+You can also simply **double-click** `run.bat` in the project folder (or run `.\run.ps1` in PowerShell).
+
+---
+
+#### Alternative: Running Each in Separate Terminals (Manual)
+
+If you prefer separate terminal windows:
+
+##### Terminal 1: Python AI Microservice (Port 8000)
 ```bash
 cd c:\Users\acer\Pictures\IQ
-pnpm --filter @workspace/api-server dev
+pnpm dev:ai
 ```
-> **What this does**: Boots the Express 5 server with TypeScript compilation on `http://localhost:5000/api`, handling passport management, matching logic, and AI routing.
 
-#### Terminal 3: Start the Vite Web Frontend (Port 5173)
+##### Terminal 2: Express API Backend (Port 5000)
 ```bash
 cd c:\Users\acer\Pictures\IQ
-pnpm --filter @workspace/digital-product-passport dev
+pnpm dev:api
+```
+
+##### Terminal 3: Vite Web Frontend (Port 5173)
+```bash
+cd c:\Users\acer\Pictures\IQ
+pnpm dev:web
+```
 ```
 > **What this does**: Serves the React 19 application at `http://localhost:5173` with automatic API proxying to port 5000.
 

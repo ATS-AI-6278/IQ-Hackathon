@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter \"@workspace/*\" --parallel run dev",
+    "dev:all": "concurrently -k -n \"AI,API,WEB\" -c \"magenta.bold,cyan.bold,green.bold\" \"pnpm dev:ai\" \"pnpm dev:api\" \"pnpm dev:web\"",
+    "start:all": "pnpm dev:all",
     "dev:web": "pnpm --filter @workspace/digital-product-passport run dev",
     "dev:api": "pnpm --filter @workspace/api-server run dev",
     "dev:ai": "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir apps/ai-service",
@@ -15,6 +17,7 @@
     "start": "pnpm --filter @workspace/api-server run start"
   },
   "devDependencies": {
+    "concurrently": "^10.0.5",
     "prettier": "^3.9.6",
     "typescript": "~5.9.3"
   }
