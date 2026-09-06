@@ -63,6 +63,7 @@ import {
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/pages/not-found';
 import { Link, Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
+import { DEMO_PRESETS } from './demo-presets';
 
 const queryClient = new QueryClient();
 
@@ -497,6 +498,34 @@ function CreatePassport() {
               </p>
             </div>
 
+            {/* ⚡ 1-Click Judge Demo Presets Bar */}
+            <div className="mb-6 rounded-2xl border border-dashed border-accent/40 bg-accent/5 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 font-mono-ui text-[11px] font-semibold uppercase tracking-[.14em] text-accent">
+                  <Sparkles size={14} className="animate-pulse" /> ⚡ 1-Click Demo Presets
+                </span>
+                <span className="text-[10px] text-muted-foreground">Click any preset to auto-load document & photo</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {DEMO_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => {
+                      setFile({ name: preset.docName, type: 'image/png', content: preset.docContent });
+                      setPhysicalFile({ name: preset.photoName, type: 'image/png', content: preset.photoContent });
+                    }}
+                    className="flex flex-col items-start rounded-xl border border-border/70 bg-card/90 p-2.5 text-left transition hover:border-accent hover:bg-accent/15"
+                    data-testid={`button-preset-${preset.id}`}
+                  >
+                    <span className="text-base">{preset.icon}</span>
+                    <span className="mt-1 line-clamp-1 text-xs font-semibold text-foreground">{preset.title}</span>
+                    <span className="text-[9px] text-muted-foreground">{preset.badge}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid gap-5 md:grid-cols-2">
               <div className="space-y-2">
                 <span className="flex items-center gap-1.5 font-mono-ui text-[10px] font-semibold uppercase tracking-[.14em] text-primary">
@@ -704,12 +733,27 @@ function CreatePassport() {
                   />
                 </div>
 
-                <div className="mt-3 overflow-hidden rounded-xl bg-primary/5">
+                <div className="relative mt-3 overflow-hidden rounded-xl bg-primary/5">
                   <img
                     src={physicalFile.content}
                     alt="Physical scan preview"
                     className="h-36 w-full object-contain"
                   />
+                  {physicalResult?.boundingBox && physicalResult.boundingBox.length === 4 && (
+                    <div
+                      className="absolute rounded border-2 border-accent bg-accent/20 transition-all pointer-events-none"
+                      style={{
+                        top: `${physicalResult.boundingBox[0] * 100}%`,
+                        left: `${physicalResult.boundingBox[1] * 100}%`,
+                        height: `${Math.max(12, (physicalResult.boundingBox[2] - physicalResult.boundingBox[0]) * 100)}%`,
+                        width: `${Math.max(12, (physicalResult.boundingBox[3] - physicalResult.boundingBox[1]) * 100)}%`,
+                      }}
+                    >
+                      <span className="absolute -top-5 left-0 rounded bg-accent px-1.5 py-0.5 text-[9px] font-bold text-accent-foreground shadow-sm">
+                        {physicalResult.detectedProduct} · {Math.round((physicalResult.confidence || 0.95) * 100)}%
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {physicalResult && (
@@ -820,9 +864,251 @@ function Scan() {
   const match = useMatchProduct();
   const link = useLinkProduct();
   const client = useQueryClient();
-  const onFile = async (file: File) => { setImage(await fileToDataUrl(file)); setImageName(file.name); setIdentified(null); setMatches(null); };
-  const identifyNow = () => { if (!image) return; identify.mutate({ data: { image } }, { onSuccess: (result) => { setIdentified(result); match.mutate({ data: { detectedProduct: result } }, { onSuccess: setMatches }); } }); };
-  return <div className="mx-auto max-w-[1100px]"><PageIntro eyebrow="Scan product" title="Find the record in the room." description="Use a product photo to identify physical details, compare them to your registry, and link the right passport." /><div className="mb-8 flex items-center gap-2"><StepBadge active={!identified} done={Boolean(identified)} label="Capture" number="01" /><div className="h-px w-10 bg-border" /><StepBadge active={Boolean(identified) && !matches} done={Boolean(matches)} label="Match" number="02" /><div className="h-px w-10 bg-border" /><StepBadge active={Boolean(matches)} label="Link" number="03" /></div><div className="grid gap-6 lg:grid-cols-[1fr_320px]"><div className="rounded-2xl border border-border bg-card p-5 md:p-8">{!image ? <div className="grid gap-4 sm:grid-cols-2"><FileDrop label="Upload a product photo" hint="JPG, PNG, or HEIC" onFile={onFile} capture /><FileDrop label="Take a photo" hint="Use your device camera" onFile={onFile} capture /></div> : <><div className="relative overflow-hidden rounded-2xl bg-primary/5">{image.startsWith('data:image') ? <img src={image} alt="Uploaded product" className="h-[260px] w-full object-contain" data-testid="img-scan-preview" /> : <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground"><ImageIcon size={20} /></div>}<button className="absolute right-3 top-3 rounded-lg bg-card/90 p-2 text-muted-foreground shadow-sm hover:text-red-600" onClick={() => { setImage(''); setImageName(''); setIdentified(null); setMatches(null); }} aria-label="Remove product image" data-testid="button-remove-scan-image"><X size={15} /></button></div><div className="mt-3 flex items-center justify-between text-xs text-muted-foreground"><span className="flex items-center gap-2"><ImageIcon size={13} /> {imageName}</span><span className="font-mono-ui">READY</span></div>{!identified && <Button className="mt-5 w-full" onClick={identifyNow} disabled={identify.isPending} data-testid="button-identify-product">{identify.isPending ? <LoaderCircle className="animate-spin" size={15} /> : <Sparkles size={15} />} Identify product</Button>}{identify.isError && <p className="mt-3 text-xs text-red-600" data-testid="text-identify-error">We could not read that image. Try a clearer angle.</p>}</>}</div><aside className="space-y-4">{identified && <div className="rounded-2xl border border-border bg-card p-5"><div className="flex items-center justify-between"><h2 className="font-display text-lg font-semibold">Detected signal</h2><StatusPill status={identified.confidence >= .8 ? 'high' : 'medium'} label={`${Math.round(identified.confidence * 100)}% match`} /></div><div className="mt-5 space-y-4"><DetailField label="Product" value={identified.detectedProduct} /><DetailField label="Brand" value={identified.brand} /><DetailField label="Model" value={identified.model} mono /><DetailField label="Serial number" value={identified.serialNumber} mono /></div>{identified.visualFeatures?.length ? <div className="mt-5 flex flex-wrap gap-1.5">{identified.visualFeatures.map((feature) => <span key={feature} className="rounded-lg bg-secondary px-2 py-1 text-[10px] text-muted-foreground">{feature}</span>)}</div> : null}</div>}{matches && <div className="rounded-2xl border border-border bg-card p-5"><div className="flex items-center gap-2 text-xs font-semibold"><Link2 size={15} className="text-accent" /> Matching passports</div>{matches.matches?.length ? <div className="mt-4 space-y-2">{matches.matches.map((item) => <div className="rounded-xl border border-border p-3" key={item.passportId}><div className="flex items-start justify-between gap-2"><div><div className="text-xs font-semibold">{item.passport.product}</div><div className="mt-1 font-mono-ui text-[10px] text-muted-foreground">{item.passportId}</div></div><StatusPill status={item.confidence} label={`${Math.round(item.matchScore * 100)}%`} /></div><p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{item.reason?.[0] || 'Signals align with this passport.'}</p><Button className="mt-3 w-full" onClick={() => link.mutate({ passportId: item.passportId, data: { image, confidence: item.matchScore, scanDate: new Date().toISOString() } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getGetPassportQueryKey(item.passportId) }); client.invalidateQueries({ queryKey: getListPassportsQueryKey() }); client.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }); client.invalidateQueries({ queryKey: getListActivityQueryKey() }); } })} disabled={link.isPending} data-testid={`button-link-passport-${item.passportId}`}>{link.isPending ? <LoaderCircle className="animate-spin" size={14} /> : <Link2 size={14} />} Link this passport</Button></div>)}</div> : <p className="mt-4 text-xs text-muted-foreground">No close record found. Try another angle or create a new passport.</p>}{link.isSuccess && <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-teal-700" data-testid="status-link-success"><Check size={14} /> Physical product linked</div>}</div>}</aside></div></div>;
+
+  const onFile = async (file: File) => {
+    setImage(await fileToDataUrl(file));
+    setImageName(file.name);
+    setIdentified(null);
+    setMatches(null);
+  };
+
+  const loadPreset = (preset: typeof DEMO_PRESETS[0]) => {
+    setImage(preset.photoContent);
+    setImageName(preset.photoName);
+    setIdentified(null);
+    setMatches(null);
+  };
+
+  const identifyNow = () => {
+    if (!image) return;
+    identify.mutate(
+      { data: { image } },
+      {
+        onSuccess: (result) => {
+          setIdentified(result);
+          match.mutate({ data: { detectedProduct: result } }, { onSuccess: setMatches });
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="mx-auto max-w-[1100px]">
+      <PageIntro
+        eyebrow="Scan product"
+        title="Find the record in the room."
+        description="Use a product photo to identify physical details, compare them to your registry, and link the right passport."
+      />
+
+      <div className="mb-8 flex items-center gap-2">
+        <StepBadge active={!identified} done={Boolean(identified)} label="Capture" number="01" />
+        <div className="h-px w-10 bg-border" />
+        <StepBadge active={Boolean(identified) && !matches} done={Boolean(matches)} label="Match" number="02" />
+        <div className="h-px w-10 bg-border" />
+        <StepBadge active={Boolean(matches)} label="Link" number="03" />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="rounded-2xl border border-border bg-card p-5 md:p-8">
+          {/* Quick Demo Presets Bar */}
+          <div className="mb-6 rounded-2xl border border-dashed border-accent/40 bg-accent/5 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 font-mono-ui text-[11px] font-semibold uppercase tracking-[.14em] text-accent">
+                <Sparkles size={14} className="animate-pulse" /> ⚡ 1-Click Scan Samples
+              </span>
+              <span className="text-[10px] text-muted-foreground">Test live detection without uploading</span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {DEMO_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => loadPreset(preset)}
+                  className="flex flex-col items-start rounded-xl border border-border/70 bg-card/90 p-2.5 text-left transition hover:border-accent hover:bg-accent/15"
+                  data-testid={`button-scan-preset-${preset.id}`}
+                >
+                  <span className="text-base">{preset.icon}</span>
+                  <span className="mt-1 line-clamp-1 text-xs font-semibold text-foreground">{preset.title}</span>
+                  <span className="text-[9px] text-muted-foreground">{preset.badge}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {!image ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FileDrop label="Upload a product photo" hint="JPG, PNG, or HEIC" onFile={onFile} capture />
+              <FileDrop label="Take a photo" hint="Use your device camera" onFile={onFile} capture />
+            </div>
+          ) : (
+            <>
+              <div className="relative overflow-hidden rounded-2xl bg-primary/5">
+                {image.startsWith('data:image') ? (
+                  <img
+                    src={image}
+                    alt="Uploaded product"
+                    className="h-[280px] w-full object-contain"
+                    data-testid="img-scan-preview"
+                  />
+                ) : (
+                  <div className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
+                    <ImageIcon size={20} />
+                  </div>
+                )}
+                {identified?.boundingBox && identified.boundingBox.length === 4 && (
+                  <div
+                    className="absolute rounded border-2 border-accent bg-accent/20 transition-all pointer-events-none"
+                    style={{
+                      top: `${identified.boundingBox[0] * 100}%`,
+                      left: `${identified.boundingBox[1] * 100}%`,
+                      height: `${Math.max(12, (identified.boundingBox[2] - identified.boundingBox[0]) * 100)}%`,
+                      width: `${Math.max(12, (identified.boundingBox[3] - identified.boundingBox[1]) * 100)}%`,
+                    }}
+                  >
+                    <span className="absolute -top-5 left-0 rounded bg-accent px-1.5 py-0.5 text-[9px] font-bold text-accent-foreground shadow-sm">
+                      {identified.detectedProduct} · {Math.round((identified.confidence || 0.95) * 100)}%
+                    </span>
+                  </div>
+                )}
+                <button
+                  className="absolute right-3 top-3 rounded-lg bg-card/90 p-2 text-muted-foreground shadow-sm hover:text-red-600"
+                  onClick={() => {
+                    setImage('');
+                    setImageName('');
+                    setIdentified(null);
+                    setMatches(null);
+                  }}
+                  aria-label="Remove product image"
+                  data-testid="button-remove-scan-image"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-2 truncate">
+                  <ImageIcon size={13} className="shrink-0" /> {imageName}
+                </span>
+                <span className="font-mono-ui font-semibold text-accent">READY</span>
+              </div>
+
+              {!identified && (
+                <Button
+                  className="mt-5 w-full"
+                  onClick={identifyNow}
+                  disabled={identify.isPending}
+                  data-testid="button-identify-product"
+                >
+                  {identify.isPending ? <LoaderCircle className="animate-spin" size={15} /> : <Sparkles size={15} />}
+                  {' '}Identify product with YOLO
+                </Button>
+              )}
+
+              {identify.isError && (
+                <p className="mt-3 text-xs text-red-600" data-testid="text-identify-error">
+                  We could not read that image. Try a clearer angle.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        <aside className="space-y-4">
+          {identified && (
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-lg font-semibold">Detected signal</h2>
+                <StatusPill
+                  status={identified.confidence >= 0.8 ? 'high' : 'medium'}
+                  label={`${Math.round(identified.confidence * 100)}% match`}
+                />
+              </div>
+              <div className="mt-5 space-y-4">
+                <DetailField label="Product" value={identified.detectedProduct} />
+                <DetailField label="Category" value={identified.category} />
+                <DetailField label="Brand" value={identified.brand || 'Visual detection'} />
+                <DetailField label="Detection Source" value={identified.source || 'Fine-tuned YOLO'} mono />
+              </div>
+              {identified.visualFeatures?.length ? (
+                <div className="mt-5 flex flex-wrap gap-1.5">
+                  {identified.visualFeatures.map((feature) => (
+                    <span key={feature} className="rounded-lg bg-secondary px-2 py-1 text-[10px] text-muted-foreground">
+                      {feature}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {matches && (
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex items-center gap-2 text-xs font-semibold">
+                <Link2 size={15} className="text-accent" /> Matching passports
+              </div>
+              {matches.matches?.length ? (
+                <div className="mt-4 space-y-2">
+                  {matches.matches.map((item) => (
+                    <div className="rounded-xl border border-border p-3" key={item.passportId}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-xs font-semibold">{item.passport.product}</div>
+                          <div className="mt-1 font-mono-ui text-[10px] text-muted-foreground">
+                            {item.passportId}
+                          </div>
+                        </div>
+                        <StatusPill status={item.confidence} label={`${Math.round(item.matchScore * 100)}%`} />
+                      </div>
+                      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                        {item.reason?.[0] || 'Signals align with this passport.'}
+                      </p>
+                      <Button
+                        className="mt-3 w-full"
+                        onClick={() =>
+                          link.mutate(
+                            {
+                              passportId: item.passportId,
+                              data: {
+                                image,
+                                confidence: item.matchScore,
+                                scanDate: new Date().toISOString(),
+                              },
+                            },
+                            {
+                              onSuccess: () => {
+                                client.invalidateQueries({ queryKey: getGetPassportQueryKey(item.passportId) });
+                                client.invalidateQueries({ queryKey: getListPassportsQueryKey() });
+                                client.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+                                client.invalidateQueries({ queryKey: getListActivityQueryKey() });
+                              },
+                            }
+                          )
+                        }
+                        disabled={link.isPending}
+                        data-testid={`button-link-passport-${item.passportId}`}
+                      >
+                        {link.isPending ? <LoaderCircle className="animate-spin" size={14} /> : <Link2 size={14} />}
+                        {' '}Link this passport
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-xs text-muted-foreground">
+                  No close record found. Try another angle or create a new passport.
+                </p>
+              )}
+              {link.isSuccess && (
+                <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-teal-700" data-testid="status-link-success">
+                  <Check size={14} /> Physical product linked
+                </div>
+              )}
+            </div>
+          )}
+        </aside>
+      </div>
+    </div>
+  );
 }
 
 function StepBadge({ active, done, label, number }: { active?: boolean; done?: boolean; label: string; number: string }) {
