@@ -435,10 +435,18 @@ def detect_product_from_image(image_input, fast: bool = False) -> dict:
         coco_dets = run_yolo(img, width, height, live=live)
 
     best = None
-    if custom_dets and custom_dets[0]["raw_confidence"] >= custom_floor:
-        best = custom_dets[0]
-    elif coco_dets and coco_dets[0]["raw_confidence"] >= (LIVE_COCO_MIN if live else MIN_PRODUCT_CONFIDENCE):
-        best = coco_dets[0]
+    custom_ok = custom_dets[0] if custom_dets and custom_dets[0]["raw_confidence"] >= custom_floor else None
+    coco_ok = coco_dets[0] if coco_dets and coco_dets[0]["raw_confidence"] >= (LIVE_COCO_MIN if live else MIN_PRODUCT_CONFIDENCE) else None
+    # Wrapped appliances often beat COCO "cell phone" / "tv" false hits.
+    if custom_ok:
+        best = custom_ok
+    elif coco_ok:
+        phone_like = coco_ok.get("raw_class") in {"cell phone", "tv", "remote"}
+        weak_custom = custom_dets[0] if custom_dets and custom_dets[0]["raw_confidence"] >= 0.32 else None
+        if live and phone_like and weak_custom:
+            best = weak_custom
+        else:
+            best = coco_ok
 
     plate = {"brand": "", "model": "", "serialNumber": "", "ocr_text": ""}
     qwen_res = None
