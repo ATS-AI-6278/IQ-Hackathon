@@ -4,8 +4,15 @@ import type {
   PassportInput,
   ProductIdentification,
 } from "@workspace/api-zod";
+import fs from "node:fs";
+import path from "node:path";
+import { createHash } from "node:crypto";
 
-const now = "2026-09-03T09:30:00.000Z";
+function isoNow(): string {
+  return new Date().toISOString();
+}
+
+const VAULT_PATH = path.resolve(process.cwd(), "data", "household-vault.json");
 
 const passports: Passport[] = [
   {
@@ -165,6 +172,63 @@ const activity: Activity[] = [
   },
 ];
 
+export function evidenceSeal(passport: Pick<Passport, "passportId" | "serialNumber" | "model" | "purchaseDate" | "sourceDocument" | "physicalProductImage">): string {
+  const hash = createHash("sha256");
+  hash.update(
+    [
+      passport.passportId,
+      passport.serialNumber || "",
+      passport.model || "",
+      passport.purchaseDate || "",
+      passport.sourceDocument || "",
+    ].join("|"),
+  );
+  const image = passport.physicalProductImage || "";
+  if (image.startsWith("data:")) {
+    hash.update(image.slice(image.indexOf(",") + 1, image.indexOf(",") + 80000));
+  }
+  return hash.digest("hex");
+}
+
+function persistVault(): void {
+  try {
+    fs.mkdirSync(path.dirname(VAULT_PATH), { recursive: true });
+    const tmp = `${VAULT_PATH}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify({ passports, activity }, null, 2), "utf8");
+    fs.renameSync(tmp, VAULT_PATH);
+  } catch {
+    // Vault persist is best-effort; in-memory still works for the process.
+  }
+}
+
+function restoreVault(): void {
+  try {
+    if (!fs.existsSync(VAULT_PATH)) return;
+    const parsed = JSON.parse(fs.readFileSync(VAULT_PATH, "utf8")) as {
+      passports?: Passport[];
+      activity?: Activity[];
+    };
+    if (Array.isArray(parsed.passports) && parsed.passports.length) {
+      passports.splice(0, passports.length, ...parsed.passports);
+    }
+    if (Array.isArray(parsed.activity) && parsed.activity.length) {
+      activity.splice(0, activity.length, ...parsed.activity);
+    }
+  } catch {
+    // Keep seed data.
+  }
+}
+
+restoreVault();
+
+function nextPassportId(): string {
+  const nums = passports
+    .map((item) => Number.parseInt(item.passportId.replace(/\D/g, ""), 10))
+    .filter((value) => Number.isFinite(value));
+  const next = Math.max(24, ...nums) + 1;
+  return `DPP-${String(next).padStart(5, "0")}`;
+}
+
 export function listPassports(filters: {
   search?: string;
   category?: string;
@@ -200,13 +264,13 @@ export function createPassport(input: PassportInput): Passport {
   );
   const passport: Passport = {
     ...input,
-    passportId: `DPP-${String(passports.length + 20).padStart(5, "0")}`,
+    passportId: nextPassportId(),
     physicalProductImage: input.physicalProductImage || null,
-    physicalScanDate: input.physicalScanDate || (isVerified ? now : null),
+    physicalScanDate: input.physicalScanDate || (isVerified ? isoNow() : null),
     matchConfidence: input.matchConfidence ?? (isVerified ? 0.95 : null),
     verificationStatus: isVerified ? "verified" : (input.verificationStatus || "pending"),
-    createdAt: now,
-    updatedAt: now,
+    createdAt: isoNow(),
+    updatedAt: isoNow(),
   };
   passports.unshift(passport);
   activity.unshift({
@@ -216,9 +280,10 @@ export function createPassport(input: PassportInput): Passport {
     description: isVerified
       ? `${passport.product} verified with physical scan match (${Math.round((passport.matchConfidence || 0.95) * 100)}%)`
       : `${passport.product} was added from ${passport.documentType.toLowerCase()}`,
-    timestamp: now,
+    timestamp: isoNow(),
     passportId: passport.passportId,
   });
+  persistVault();
   return passport;
 }
 
@@ -228,7 +293,8 @@ export function updatePassport(
 ): Passport | undefined {
   const passport = getPassport(passportId);
   if (!passport) return undefined;
-  Object.assign(passport, updates, { updatedAt: now });
+  Object.assign(passport, updates, { updatedAt: isoNow() });
+  persistVault();
   return passport;
 }
 
@@ -255,6 +321,7 @@ export function linkProduct(
     timestamp: scanDate,
     passportId,
   });
+  persistVault();
   return passport;
 }
 
@@ -267,10 +334,68 @@ export function getSummary() {
     totalPassports: passports.length,
     productsScanned: passports.filter((passport) => passport.physicalProductImage)
       .length,
-    documentsProcessed: passports.length + 7,
+    documentsProcessed: passports.filter((passport) => passport.sourceDocument).length,
     successfullyLinked: passports.filter(
       (passport) => passport.verificationStatus === "verified",
     ).length,
+  };
+}
+
+export function listAllPassports(): Passport[] {
+  return passports;
+}
+
+export function warrantyDaysLeft(passport: Passport): number | null {
+  if (!passport.purchaseDate || !passport.warranty) return null;
+  const monthsMatch = passport.warranty.match(/(\d+)\s*(year|yr)/i);
+  const monthMatch = passport.warranty.match(/(\d+)\s*(month|mo)/i);
+  let months = 0;
+  if (monthsMatch) months = Number(monthsMatch[1]) * 12;
+  else if (monthMatch) months = Number(monthMatch[1]);
+  else return null;
+  const start = new Date(passport.purchaseDate);
+  if (Number.isNaN(start.getTime())) return null;
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + months);
+  return Math.round((end.getTime() - Date.now()) / 86_400_000);
+}
+
+export function compactPassportsForAsk() {
+  return passports.map((passport) => ({
+    passportId: passport.passportId,
+    product: passport.product,
+    brand: passport.brand,
+    model: passport.model,
+    serialNumber: passport.serialNumber,
+    category: passport.category,
+    purchaseDate: passport.purchaseDate,
+    purchasePrice: passport.purchasePrice,
+    currency: passport.currency,
+    warranty: passport.warranty,
+    warrantyDaysLeft: warrantyDaysLeft(passport),
+    seller: passport.seller,
+    invoiceNumber: passport.invoiceNumber,
+    verificationStatus: passport.verificationStatus,
+  }));
+}
+
+export function householdInsights() {
+  const items = passports.map((passport) => {
+    const days = warrantyDaysLeft(passport);
+    return { passport, days };
+  });
+  const urgent = items.filter((item) => item.days !== null && item.days <= 45);
+  const healthy = items.filter((item) => item.days === null || item.days > 45);
+  return {
+    urgent: urgent.map((item) => ({
+      passportId: item.passport.passportId,
+      product: item.passport.product,
+      daysLeft: item.days,
+      seal: evidenceSeal(item.passport),
+    })),
+    activeWarranties: items.filter((item) => item.days !== null && item.days >= 0).length,
+    pending: passports.filter((item) => item.verificationStatus === "pending").length,
+    healthyCount: healthy.length,
   };
 }
 

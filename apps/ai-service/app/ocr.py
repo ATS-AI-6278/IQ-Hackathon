@@ -101,7 +101,8 @@ KEYWORDS = [
     "date", "price", "amount", "total", "seller", "dealer", "customer",
     "refrigerator", "fridge", "washing machine", "washer", "dryer",
     "dishwasher", "television", "tv", "microwave", "oven", "laptop",
-    "espresso", "air conditioner", "ac", "purifier", "vacuum", "order"
+    "espresso", "air conditioner", "ac", "purifier", "vacuum", "order",
+    "gst", "gstin", "rupee", "rs.", "inr", "filter", "serial no"
 ]
 
 
@@ -131,7 +132,7 @@ def load_image_from_any(image_input) -> tuple[Image.Image, str]:
     if img.mode != "RGB":
         img = img.convert("RGB")
 
-    img_hash = hashlib.md5(raw_bytes[:8192] if raw_bytes else b"").hexdigest()
+    img_hash = hashlib.sha256(raw_bytes if raw_bytes else b"").hexdigest()
     return img, img_hash
 
 

@@ -9,29 +9,28 @@ Pipeline:
 5. Strict anti-hallucination validation: null/empty strings when evidence is missing
 """
 
-import os
 import re
 import json
 import base64
 import io
-from pathlib import Path
 from datetime import datetime
-import requests
 from PIL import Image
 
 from .ocr import process_image, load_image_from_any
+from .llm import VISION_TIMEOUT, choose_vision_model, list_ollama_models, ollama_generate
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
-DEFAULT_VISION_MODEL = os.environ.get("VISION_MODEL", "qwen2.5vl:7b")
-OLLAMA_TIMEOUT = int(os.environ.get("OLLAMA_TIMEOUT", "4"))
-DISABLE_OLLAMA_VISION = os.environ.get("DISABLE_OLLAMA_VISION", "false").lower() in ("true", "1", "yes")
+# Backwards-compatible aliases used by main.py / audit scripts
+def get_available_ollama_models() -> list[str]:
+    return list_ollama_models()
 
 # Known consumer electronics / appliance brands
 KNOWN_BRANDS = [
     "Samsung", "LG", "Sony", "Dell", "HP", "Lenovo", "Apple",
     "Electrolux", "Bosch", "Siemens", "Whirlpool", "Panasonic",
     "Philips", "Dyson", "Asus", "Acer", "Nordhaus", "Miele",
-    "Haier", "Hisense", "TCL", "Toshiba", "Logitech"
+    "Haier", "Hisense", "TCL", "Toshiba", "Logitech",
+    "Aquaguard", "Kent", "Voltas", "Blue Star", "Godrej", "IFB",
+    "Xiaomi", "iQOO", "Vivo", "Realme"
 ]
 
 # Blacklist of generic label words to never capture as models or serials
@@ -44,30 +43,6 @@ INVALID_CODE_WORDS = {
     "product", "productpurchased", "companyname", "logocompany", "logo",
     "partsnot", "partnot", "service", "terms", "limited", "signature"
 }
-
-
-def get_available_ollama_models() -> list[str]:
-    try:
-        resp = requests.get(f"{OLLAMA_URL}/api/tags", timeout=2)
-        if resp.status_code == 200:
-            data = resp.json()
-            return [m.get("name", "") for m in data.get("models", []) if m.get("name")]
-    except Exception:
-        pass
-    return []
-
-
-def choose_vision_model() -> str | None:
-    if DISABLE_OLLAMA_VISION:
-        return None
-    models = get_available_ollama_models()
-    for m in models:
-        lower = m.lower()
-        if any(target in lower for target in ["qwen2.5vl", "qwen2-vl", "qwen3-vl", "llama3.2-vision"]):
-            return m
-    if DEFAULT_VISION_MODEL in models:
-        return DEFAULT_VISION_MODEL
-    return None
 
 
 def image_to_base64(img: Image.Image) -> str:
@@ -103,46 +78,63 @@ def normalize_date(val_str: str | None) -> str | None:
     return None
 
 
-def extract_price_and_currency(text: str) -> tuple[float | None, str | None]:
-    """
-    Extracts authentic purchase price only when accompanied by explicit currency or price markers.
-    Never extracts random standalone numbers as prices.
-    """
-    # 1. Look for currency symbol followed/preceded by amount: $599.00, €450, 1249 USD, etc.
-    currency_patterns = [
-        (r"\$\s*(\d{2,6}(?:[.,]\d{2})?)", "USD"),
-        (r"(\d{2,6}(?:[.,]\d{2})?)\s*(?:USD|usd)\b", "USD"),
-        (r"€\s*(\d{2,6}(?:[.,]\d{2})?)", "EUR"),
-        (r"(\d{2,6}(?:[.,]\d{2})?)\s*(?:EUR|eur)\b", "EUR"),
-        (r"£\s*(\d{2,6}(?:[.,]\d{2})?)", "GBP"),
-        (r"(\d{2,6}(?:[.,]\d{2})?)\s*(?:GBP|gbp)\b", "GBP"),
-        (r"₹\s*(\d{2,6}(?:[.,]\d{2})?)", "INR"),
-        (r"(\d{2,6}(?:[.,]\d{2})?)\s*(?:INR|inr)\b", "INR"),
-    ]
-    for pat, curr in currency_patterns:
-        m = re.search(pat, text)
-        if m:
-            raw = m.group(1).replace(",", ".")
-            try:
-                val = float(raw)
-                if val > 0:
-                    return val, curr
-            except Exception:
-                pass
+def _parse_amount(raw: str, indian: bool = False) -> float | None:
+    cleaned = raw.strip()
+    if indian or (cleaned.count(",") >= 1 and "." not in cleaned):
+        cleaned = cleaned.replace(",", "")
+    else:
+        cleaned = cleaned.replace(",", ".")
+    try:
+        val = float(cleaned)
+        return val if val > 0 else None
+    except Exception:
+        return None
 
-    # 2. Look for price keywords: Total: 699, Amount: 350.00
-    kw_pattern = r"(?:total\s*(?:amount|price)?|grand\s*total|net\s*amount|price|amount)\s*[:=]\s*[:$€£₹]?\s*(\d{2,6}(?:[.,]\d{2})?)"
+
+def extract_price_and_currency(text: str) -> tuple[float | None, str | None]:
+    """Extracts price only with an explicit currency marker. India-first (₹ / Rs / INR)."""
+    currency_patterns = [
+        (r"(?:₹|rs\.?|inr)\s*([0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{2})?|[0-9]{2,7}(?:\.[0-9]{2})?)", "INR", True),
+        (r"([0-9]{1,3}(?:,[0-9]{2,3})+(?:\.[0-9]{2})?)\s*(?:₹|rs\.?|inr)\b", "INR", True),
+        (r"\$\s*(\d{2,6}(?:[.,]\d{2})?)", "USD", False),
+        (r"(\d{2,6}(?:[.,]\d{2})?)\s*(?:USD|usd)\b", "USD", False),
+        (r"€\s*(\d{2,6}(?:[.,]\d{2})?)", "EUR", False),
+        (r"(\d{2,6}(?:[.,]\d{2})?)\s*(?:EUR|eur)\b", "EUR", False),
+        (r"£\s*(\d{2,6}(?:[.,]\d{2})?)", "GBP", False),
+        (r"(\d{2,6}(?:[.,]\d{2})?)\s*(?:GBP|gbp)\b", "GBP", False),
+    ]
+    for pat, curr, indian in currency_patterns:
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            val = _parse_amount(m.group(1), indian=indian)
+            if val:
+                return val, curr
+
+    kw_pattern = r"(?:grand\s*total|net\s*amount|total\s*(?:amount|price)?|price|amount)\s*[:=]\s*[:$€£₹]?\s*(\d{2,7}(?:[.,]\d{2})?)"
     m = re.search(kw_pattern, text, re.IGNORECASE)
     if m:
-        raw = m.group(1).replace(",", ".")
-        try:
-            val = float(raw)
-            if val > 0:
-                return val, "USD"
-        except Exception:
-            pass
+        indian = "₹" in text or re.search(r"\b(?:rs\.?|inr)\b", text, re.IGNORECASE)
+        val = _parse_amount(m.group(1), indian=bool(indian))
+        if val:
+            return val, "INR" if indian else "USD"
 
     return None, None
+
+
+def field_evidenced(value: str | None, ocr_text: str) -> str:
+    """Keep a model/serial/brand only if its alphanumerics appear in OCR text."""
+    if not value:
+        return ""
+    raw = str(value).strip()
+    if not raw:
+        return ""
+    if raw.lower() in ocr_text.lower():
+        return raw
+    compact_val = re.sub(r"[^a-zA-Z0-9]", "", raw.lower())
+    compact_ocr = re.sub(r"[^a-zA-Z0-9]", "", ocr_text.lower())
+    if len(compact_val) >= 4 and compact_val in compact_ocr:
+        return raw
+    return ""
 
 
 def clean_json_response(text: str) -> dict | None:
@@ -245,16 +237,14 @@ def fallback_extraction(ocr_evidence: dict) -> dict:
 
     # Warranty duration extraction
     warranty = None
-    warranty_match = re.search(r"(\b\d{1,2}\s*(?:months?|years?|yr|mo)\b)\s*(?:warranty|guarantee)?", text, re.IGNORECASE)
+    warranty_match = re.search(
+        r"(\d{1,2}\s*(?:months?|years?|yr|mo))\s*(?:warranty|guarantee)?|"
+        r"(?:warranty|guarantee)\s*(?:of|period|for)?\s*[:\-]?\s*(\d{1,2}\s*(?:months?|years?|yr|mo))",
+        text,
+        re.IGNORECASE,
+    )
     if warranty_match:
-        warranty = warranty_match.group(1).strip()
-    elif "warranty" in lower:
-        if "24" in text:
-            warranty = "24 months"
-        elif "36" in text:
-            warranty = "36 months"
-        elif "12" in text or "1 year" in lower:
-            warranty = "12 months"
+        warranty = (warranty_match.group(1) or warranty_match.group(2) or "").strip() or None
 
     # Seller extraction
     seller = None
@@ -282,6 +272,8 @@ def fallback_extraction(ocr_evidence: dict) -> dict:
         ("dishwasher", "Dishwasher", "Home appliance"),
         ("air-conditioner", "Air Conditioner", "Home appliance"),
         ("air conditioner", "Air Conditioner", "Home appliance"),
+        ("water purifier", "Water Purifier", "Home appliance"),
+        ("purifier", "Water Purifier", "Home appliance"),
     ]
     for kw, pname, cat in category_map:
         if re.search(rf"\b{re.escape(kw)}\b", lower):
@@ -384,31 +376,25 @@ def extract_products_from_image(image_input, file_name: str = "", ocr_evidence: 
         if (p.get("brand") and p.get("model")) or p.get("serialNumber"):
             has_strong_ocr = True
 
-    # Only attempt Ollama if not short-circuited and vision model is ready
+    # Qwen2.5-VL fills gaps (serial/model) when OCR is incomplete. Never used as the sole source.
     vision_model = choose_vision_model() if not has_strong_ocr else None
     result = None
+    ocr_text = ocr_evidence.get("combined_text", "")
 
     if vision_model:
         prompt = create_vision_prompt(ocr_evidence)
         try:
             img, _ = load_image_from_any(image_input)
             b64 = image_to_base64(img)
-
-            payload = {
-                "model": vision_model,
-                "prompt": prompt,
-                "images": [b64],
-                "stream": False,
-                "format": "json",
-                "options": {"temperature": 0.0}
-            }
-            resp = requests.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=OLLAMA_TIMEOUT)
-            if resp.status_code == 200:
-                raw = resp.json().get("response", "")
-                result = clean_json_response(raw)
-        except Exception as e:
-            # Bounded failure: immediately fall back without stalling
-            pass
+            result = ollama_generate(
+                vision_model,
+                prompt,
+                images=[b64],
+                timeout=VISION_TIMEOUT,
+                json_mode=True,
+            )
+        except Exception:
+            result = None
 
     if not result or not result.get("products"):
         return fallback_res
@@ -424,9 +410,9 @@ def extract_products_from_image(image_input, file_name: str = "", ocr_evidence: 
             continue
 
         p_name = prod.get("product") or fallback_res["products"][0]["product"]
-        brand = prod.get("brand") or fallback_res["products"][0]["brand"]
-        model = prod.get("model") or fallback_res["products"][0]["model"]
-        serial = prod.get("serial_number") or fallback_res["products"][0]["serialNumber"]
+        brand = field_evidenced(prod.get("brand"), ocr_text) or fallback_res["products"][0]["brand"]
+        model = field_evidenced(prod.get("model"), ocr_text) or fallback_res["products"][0]["model"]
+        serial = field_evidenced(prod.get("serial_number"), ocr_text) or fallback_res["products"][0]["serialNumber"]
         category = prod.get("category") or fallback_res["products"][0]["category"]
 
         price, curr = None, None

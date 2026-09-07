@@ -8,7 +8,7 @@
     "start:all": "pnpm dev:all",
     "dev:web": "pnpm --filter @workspace/digital-product-passport run dev",
     "dev:api": "pnpm --filter @workspace/api-server run dev",
-    "dev:ai": "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir apps/ai-service",
+    "dev:ai": "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir apps/ai-service --no-access-log",
     "build": "pnpm -r --if-present run build",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test:ai": "python apps/ai-service/test_ai.py",

@@ -1,37 +1,50 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Smartphone, X, ExternalLink, QrCode, Sparkles, Check } from 'lucide-react';
+import { fetchLan } from '@/lib/household';
 
 interface PhoneConnectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  targetPath?: string;
+      targetPath?: string;
 }
 
-export function PhoneConnectModal({ isOpen, onClose, targetPath = '/scan' }: PhoneConnectModalProps) {
+export function PhoneConnectModal({ isOpen, onClose, targetPath = '/camera' }: PhoneConnectModalProps) {
   const [qrUrl, setQrUrl] = useState<string>('');
   const [mobileUrl, setMobileUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
-    const hostname = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      ? '192.168.1.4' // LAN IP for mobile access
-      : window.location.hostname;
-    const port = window.location.port ? `:${window.location.port}` : '';
-    const fullUrl = `${window.location.protocol}//${hostname}${port}${targetPath}`;
-    setMobileUrl(fullUrl);
+    let cancelled = false;
+    const apply = (url: string) => {
+      if (cancelled) return;
+      setMobileUrl(url);
+      QRCode.toDataURL(url, {
+        width: 260,
+        margin: 2,
+        color: { dark: '#0f172a', light: '#ffffff' },
+      })
+        .then(setQrUrl)
+        .catch(console.error);
+    };
 
-    QRCode.toDataURL(fullUrl, {
-      width: 260,
-      margin: 2,
-      color: {
-        dark: '#0f172a',
-        light: '#ffffff',
-      },
-    })
-      .then(setQrUrl)
-      .catch(console.error);
+    const localHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!localHost) {
+      apply(`${window.location.origin}${targetPath}`);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void fetchLan().then((lan) => {
+      const origin = (lan.urls[0] || lan.preferred || window.location.origin).replace(/\/(camera|scan)$/i, '');
+      apply(`${origin}${targetPath}`);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, targetPath]);
 
   if (!isOpen) return null;

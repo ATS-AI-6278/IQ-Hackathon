@@ -1,3 +1,4 @@
+import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -13,14 +14,43 @@ import { logger } from "./logger";
 const AI_SERVICE_URL = process.env["AI_SERVICE_URL"] || "http://127.0.0.1:8000";
 const PYTHON_CMD = process.env["PYTHON_PATH"] || "python";
 
-// Resolve ai-service root path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const AI_SERVICE_DIR = path.resolve(__dirname, "../../../ai-service");
 
-/**
- * Executes a command via Python CLI runner as an offline/in-process fallback.
- */
+const EMPTY_ANALYSIS: DocumentAnalysis = {
+  documentType: "Other",
+  products: [
+    {
+      product: "Unverified document",
+      brand: "",
+      model: "",
+      serialNumber: "",
+      category: "Other",
+      selected: true,
+      evidence: "Local AI service unavailable. No fields were invented.",
+    },
+  ],
+  extractedFields: {
+    purchaseDate: null,
+    purchasePrice: null,
+    currency: null,
+    warranty: null,
+    seller: null,
+  },
+};
+
+const EMPTY_IDENTIFY: ProductIdentification = {
+  detectedProduct: "Unidentified Product",
+  category: "Other",
+  brand: "",
+  model: "",
+  serialNumber: "",
+  confidence: 0,
+  boundingBox: [],
+  visualFeatures: ["Local AI service unavailable. Nothing was invented."],
+};
+
 async function runPythonCli(command: string, inputPayload?: unknown): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const proc = spawn(PYTHON_CMD, ["-m", "app.runner", command], {
@@ -35,22 +65,16 @@ async function runPythonCli(command: string, inputPayload?: unknown): Promise<un
     proc.stdout.on("data", (chunk) => {
       stdout += chunk.toString();
     });
-
     proc.stderr.on("data", (chunk) => {
       stderr += chunk.toString();
     });
-
-    proc.on("error", (err) => {
-      reject(err);
-    });
-
+    proc.on("error", reject);
     proc.on("close", (code) => {
       if (code !== 0) {
         return reject(new Error(`Python runner exited with code ${code}: ${stderr}`));
       }
       try {
-        const parsed = JSON.parse(stdout.trim());
-        resolve(parsed);
+        resolve(JSON.parse(stdout.trim()));
       } catch (e) {
         reject(new Error(`Failed to parse Python output: ${stdout}. Error: ${e}`));
       }
@@ -65,71 +89,78 @@ async function runPythonCli(command: string, inputPayload?: unknown): Promise<un
   });
 }
 
-/**
- * Retrieves AI service connectivity status.
- */
+export function lanAddresses(): { urls: string[]; preferred: string } {
+  const port = process.env["WEB_PORT"] || "5173";
+  const urls: string[] = [];
+  const nets = os.networkInterfaces();
+  for (const entries of Object.values(nets)) {
+    for (const entry of entries || []) {
+      if (entry.family === "IPv4" && !entry.internal) {
+        urls.push(`http://${entry.address}:${port}/camera`);
+      }
+    }
+  }
+  return { urls, preferred: urls[0] || `http://127.0.0.1:${port}/scan` };
+}
+
 export async function getAiStatus(): Promise<SystemStatus> {
-  // 1. Try FastAPI HTTP endpoint
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1500);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     const resp = await fetch(`${AI_SERVICE_URL}/status`, { signal: controller.signal });
     clearTimeout(timeoutId);
-
     if (resp.ok) {
-      return (await resp.json()) as SystemStatus;
+      const remote = (await resp.json()) as SystemStatus;
+      return {
+        backend: {
+          name: "Passport API",
+          status: "connected",
+          detail: "SQLite-style JSON vault · Express 5",
+        },
+        services: remote.services || [],
+      };
     }
   } catch (_e) {
-    // HTTP not available, try CLI fallback
+    // try CLI
   }
 
-  // 2. Try CLI fallback
   try {
     const cliRes = (await runPythonCli("status")) as SystemStatus;
-    if (cliRes && cliRes.services) {
-      return cliRes;
+    if (cliRes?.services) {
+      return {
+        backend: {
+          name: "Passport API",
+          status: "connected",
+          detail: "Vault ready · AI via CLI bridge",
+        },
+        services: cliRes.services,
+      };
     }
   } catch (_e) {
-    // Fall back to default connected status
+    // honest offline
   }
 
-  // 3. Resilient fallback
   return {
     backend: {
       name: "Passport API",
       status: "connected",
-      detail: "Operational · ready for secure storage",
+      detail: "API up · Python AI engine unreachable",
     },
     services: [
-      {
-        name: "OCR engine",
-        status: "connected",
-        detail: "RapidOCR (ONNX) ready",
-      },
-      {
-        name: "Vision model",
-        status: "connected",
-        detail: "Qwen2.5-VL / Ollama pipeline ready",
-      },
-      {
-        name: "Product detection",
-        status: "connected",
-        detail: "YOLO appliance detection ready (yolo26n.pt)",
-      },
+      { name: "OCR engine", status: "unavailable", detail: "Start pnpm dev:ai (port 8000)" },
+      { name: "Vision model", status: "unavailable", detail: "Qwen2.5-VL via Ollama not reachable" },
+      { name: "Household LLM", status: "unavailable", detail: "Gemma 2 via Ollama not reachable" },
+      { name: "Product detection", status: "unavailable", detail: "YOLO service offline" },
     ],
   };
 }
 
-/**
- * Analyzes uploaded product document (invoices, warranty cards, receipts).
- */
 export async function runDocumentAnalysis(
   input: DocumentAnalysisInput,
 ): Promise<DocumentAnalysis> {
-  // 1. Try FastAPI HTTP endpoint
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
     const resp = await fetch(`${AI_SERVICE_URL}/analyze-document`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -137,7 +168,6 @@ export async function runDocumentAnalysis(
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
-
     if (resp.ok) {
       return (await resp.json()) as DocumentAnalysis;
     }
@@ -145,65 +175,31 @@ export async function runDocumentAnalysis(
     logger.warn({ err: e }, "HTTP analyze-document failed, trying Python CLI fallback");
   }
 
-  // 2. Try Python CLI fallback
   try {
     const cliResult = (await runPythonCli("analyze", input)) as DocumentAnalysis;
-    if (cliResult && cliResult.products && cliResult.products.length > 0) {
+    if (cliResult?.products?.length) {
       return cliResult;
     }
   } catch (e) {
-    logger.warn({ err: e }, "Python CLI runner failed, using heuristic extraction");
+    logger.warn({ err: e }, "Python CLI runner failed");
   }
 
-  // 3. Heuristic fallback
-  const lowerName = input.fileName.toLowerCase();
-  const documentType = lowerName.includes("invoice")
-    ? "Purchase invoice"
-    : lowerName.includes("receipt")
-      ? "Retail receipt"
-      : "Warranty certificate";
-
-  return {
-    documentType,
-    products: [
-      {
-        product: "Bespoke Refrigerator",
-        brand: "Samsung",
-        model: "RB34T672EWW",
-        serialNumber: "0A8K91B43",
-        category: "Home appliance",
-        selected: true,
-        evidence: "Product name and serial number verified from document.",
-      },
-    ],
-    extractedFields: {
-      purchaseDate: "2025-08-12",
-      purchasePrice: 689,
-      currency: "EUR",
-      warranty: "24 months",
-      seller: "Nordhaus Living",
-    },
-  };
+  return EMPTY_ANALYSIS;
 }
 
-/**
- * Identifies a physical product and visual features from an image.
- */
 export async function runProductIdentification(
-  input: ProductIdentificationInput,
+  input: ProductIdentificationInput & { fast?: boolean },
 ): Promise<ProductIdentification> {
-  // 1. Try FastAPI HTTP endpoint
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const timeoutId = setTimeout(() => controller.abort(), input.fast ? 8000 : 45000);
     const resp = await fetch(`${AI_SERVICE_URL}/identify-product`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
+      body: JSON.stringify({ image: input.image, fast: Boolean(input.fast) }),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
-
     if (resp.ok) {
       return (await resp.json()) as ProductIdentification;
     }
@@ -211,25 +207,47 @@ export async function runProductIdentification(
     logger.warn({ err: e }, "HTTP identify-product failed, trying Python CLI fallback");
   }
 
-  // 2. Try Python CLI fallback
   try {
     const cliResult = (await runPythonCli("identify", input)) as ProductIdentification;
-    if (cliResult && cliResult.detectedProduct) {
+    if (cliResult?.detectedProduct) {
       return cliResult;
     }
   } catch (e) {
-    logger.warn({ err: e }, "Python CLI identify runner failed, using heuristic identification");
+    logger.warn({ err: e }, "Python CLI identify runner failed");
   }
 
-  // 3. Fallback
-  return {
-    detectedProduct: "Bespoke Refrigerator",
-    category: "Home appliance",
-    brand: "Samsung",
-    model: "RB34T672EWW",
-    serialNumber: "0A8K91B43",
-    confidence: 0.94,
-    boundingBox: [0.08, 0.1, 0.86, 0.78],
-    visualFeatures: ["tall stainless steel body", "bottom freezer", "digital display"],
-  };
+  return EMPTY_IDENTIFY;
+}
+
+export async function runHouseholdAsk(question: string, passports: unknown[]): Promise<Record<string, unknown>> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const resp = await fetch(`${AI_SERVICE_URL}/ask-household`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, passports }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (resp.ok) {
+      return (await resp.json()) as Record<string, unknown>;
+    }
+  } catch (e) {
+    logger.warn({ err: e }, "HTTP ask-household failed, trying CLI");
+  }
+
+  try {
+    return (await runPythonCli("ask", { question, passports })) as Record<string, unknown>;
+  } catch (e) {
+    logger.warn({ err: e }, "Household ask unavailable");
+    return {
+      answer: "Household LLM is offline. I can still list passports from the local vault once the AI service is running.",
+      why: "Ollama Gemma / Python engine not reachable.",
+      sources: [],
+      confidence: 0.4,
+      intent: "none",
+      engine: "offline",
+    };
+  }
 }

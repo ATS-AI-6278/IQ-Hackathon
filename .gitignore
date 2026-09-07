@@ -24,8 +24,7 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Logs
-*.log
+apps/api/data/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -39,3 +38,8 @@ Model/runs/custom_appliances/train_batch*
 # Office temp lock files
 ~$*
 
+# Temporary build & deployment caches
+.netlify/
+apps/web/.netlify/
+.codex-verid-build/
+.codex-verid-v2-build/

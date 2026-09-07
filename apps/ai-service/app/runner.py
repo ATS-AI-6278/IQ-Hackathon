@@ -16,6 +16,7 @@ from pathlib import Path
 from .main import get_service_status
 from .extractor import extract_products_from_image
 from .detector import detect_product_from_image
+from .household import ask_household
 
 
 def read_input(arg_val: str | None = None) -> dict:
@@ -53,7 +54,11 @@ def main():
         elif cmd == "identify":
             data = read_input(arg)
             image = data.get("image", "")
-            res = detect_product_from_image(image)
+            res = detect_product_from_image(image, fast=bool(data.get("fast")))
+            print(json.dumps(res))
+        elif cmd == "ask":
+            data = read_input(arg)
+            res = ask_household(data.get("question", ""), data.get("passports") or [])
             print(json.dumps(res))
         else:
             print(json.dumps({"error": f"Unknown command: {cmd}"}))

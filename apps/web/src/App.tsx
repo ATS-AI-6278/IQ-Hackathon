@@ -1,4 +1,4 @@
-import { type ButtonHTMLAttributes, type ReactNode, useMemo, useRef, useState } from 'react';
+import { type ButtonHTMLAttributes, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
   Activity as ActivityIcon,
@@ -72,6 +72,11 @@ import { Link, Route, Switch, useLocation, useParams, Router as WouterRouter } f
 import { DEMO_PRESETS } from './demo-presets';
 import { PhoneConnectModal } from '@/components/phone-connect-modal';
 import { PassportCertificateModal } from '@/components/passport-certificate-modal';
+import { LiveScanHud } from '@/components/live-scan-hud';
+import { fetchClaimPack, fetchInsights } from '@/lib/household';
+import { VeridShell } from '@/verid/shell';
+import { AskPage, CameraHint, HomePage, MemoryPage, PrivacyPage, ProductMemoryPage } from '@/verid/pages';
+import { fetchProductMemory, type GraphNode } from '@/verid/memory-api';
 
 const queryClient = new QueryClient();
 
@@ -249,6 +254,10 @@ function Dashboard() {
   const summary = useGetDashboardSummary({ query: { queryKey: getGetDashboardSummaryQueryKey() } });
   const activity = useListActivity({ query: { queryKey: getListActivityQueryKey() } });
   const passports = useListPassports({}, { query: { queryKey: getListPassportsQueryKey({}) } });
+  const [insights, setInsights] = useState<{ urgent: Array<{ passportId: string; product: string; daysLeft: number | null }>; activeWarranties: number; pending: number; healthyCount: number } | null>(null);
+  useEffect(() => {
+    void fetchInsights().then(setInsights);
+  }, [summary.data?.totalPassports]);
   const stats = [
     { label: 'Total passports', value: summary.data?.totalPassports, icon: Fingerprint, detail: 'Identity records' },
     { label: 'Products scanned', value: summary.data?.productsScanned, icon: ScanLine, detail: 'Physical checks' },
@@ -269,52 +278,53 @@ function Dashboard() {
         })}
       </section>
 
-      {/* Smart Guardian & Circular Economy Pulse */}
       <section className="mt-7 grid gap-3.5 sm:grid-cols-3" aria-label="Smart Guardian Insights">
         <div className="rounded-2xl border border-border bg-card p-4 md:p-5">
           <div className="flex items-center justify-between">
             <span className="font-mono-ui text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Warranty Shield</span>
-            <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-800">100% Active</span>
+            <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-800">{insights?.activeWarranties ?? '—'} active</span>
           </div>
           <div className="mt-3 flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
               <ShieldCheck size={20} />
             </div>
             <div>
-              <div className="text-sm font-semibold">Zero Expired Assets</div>
-              <div className="text-xs text-muted-foreground">All passports have active seller or mfg warranty.</div>
+              <div className="text-sm font-semibold">{insights?.urgent.length ? `${insights.urgent.length} nearing expiry` : 'No sub-45-day expiries'}</div>
+              <div className="text-xs text-muted-foreground">Computed from purchase date + warranty duration.</div>
             </div>
           </div>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-4 md:p-5">
           <div className="flex items-center justify-between">
-            <span className="font-mono-ui text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Maintenance AI</span>
-            <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent">Upcoming</span>
+            <span className="font-mono-ui text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Needs attention</span>
+            <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent">Vault</span>
           </div>
           <div className="mt-3 flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
               <Wrench size={20} />
             </div>
             <div>
-              <div className="text-sm font-semibold">Filter & Descale Due</div>
-              <div className="text-xs text-muted-foreground">Electrolux EcoCare drum flush recommended in 30d.</div>
+              <div className="text-sm font-semibold">{insights?.urgent[0]?.product || 'All clear'}</div>
+              <div className="text-xs text-muted-foreground">
+                {insights?.urgent[0]?.daysLeft != null ? `${insights.urgent[0].daysLeft} days left` : `${insights?.pending ?? 0} passports still pending hardware proof`}
+              </div>
             </div>
           </div>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-4 md:p-5">
           <div className="flex items-center justify-between">
-            <span className="font-mono-ui text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">EU DPP Compliance</span>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">94.8% Score</span>
+            <span className="font-mono-ui text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Evidence posture</span>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">SHA-256</span>
           </div>
           <div className="mt-3 flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
               <Leaf size={20} />
             </div>
             <div>
-              <div className="text-sm font-semibold">Circular Ecodesign Ready</div>
-              <div className="text-xs text-muted-foreground">Repairability and serial lineage cryptographically sealed.</div>
+              <div className="text-sm font-semibold">{insights?.healthyCount ?? 0} records healthy</div>
+              <div className="text-xs text-muted-foreground">Household-inspired passports, not an EU legal filing.</div>
             </div>
           </div>
         </div>
@@ -353,7 +363,7 @@ function Passports() {
     <PageIntro eyebrow="Passport library" title="Your product registry." description="Search every identity record, inspect its evidence, and keep the chain of trust current." action={<Link href="/create" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground" data-testid="link-create-library"><Plus size={16} /> New passport</Link>} />
     <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 md:flex-row">
       <label className="relative flex min-h-10 flex-1 items-center"><Search size={16} className="absolute left-3 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search product, brand, serial, or passport ID" className="h-10 w-full rounded-xl border-0 bg-secondary pl-10 pr-3 text-sm outline-none ring-accent placeholder:text-muted-foreground focus:ring-2" data-testid="input-search-passports" /></label>
-      <select value={category} onChange={(event) => setCategory(event.target.value)} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent" data-testid="select-passport-category"><option value="">All categories</option><option value="Electronics">Electronics</option><option value="Furniture">Furniture</option><option value="Apparel">Apparel</option><option value="Appliance">Appliance</option></select>
+      <select value={category} onChange={(event) => setCategory(event.target.value)} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent" data-testid="select-passport-category"><option value="">All categories</option><option value="Home appliance">Home appliance</option><option value="Electronics">Electronics</option><option value="Furniture">Furniture</option><option value="Computing">Computing</option><option value="Small domestic appliance">Small domestic appliance</option><option value="Mobile device">Mobile device</option></select>
       <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent" data-testid="select-passport-status"><option value="">Any status</option><option value="verified">Verified</option><option value="pending">Pending</option></select>
     </div>
     <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground"><span data-testid="text-passport-count">{query.isLoading ? 'Loading registry…' : `${query.data?.length || 0} passport${query.data?.length === 1 ? '' : 's'}`}</span><span className="font-mono-ui uppercase tracking-[.14em]">Sorted by recent update</span></div>
@@ -579,9 +589,9 @@ function CreatePassport() {
   return (
     <div className="mx-auto max-w-[1100px]">
       <PageIntro
-        eyebrow="Create passport"
-        title="Turn evidence into identity."
-        description="Upload a product document and physical scan together to verify your product in a single step."
+        eyebrow="Remember"
+        title="One invoice. One photo. Confirm what Verid understood."
+        description="You should not type a household. Verid extracts what it can, leaves the rest unknown, and asks you to confirm."
       />
 
       <div className="mb-8 flex items-center gap-2 overflow-x-auto pb-2">
@@ -976,10 +986,21 @@ function Scan() {
   const [identified, setIdentified] = useState<ProductIdentification | null>(null);
   const [matches, setMatches] = useState<{ matches: ProductMatch[] } | null>(null);
   const [phoneModalOpen, setPhoneModalOpen] = useState(false);
+  const [remembered, setRemembered] = useState<GraphNode | null>(null);
   const identify = useIdentifyProduct();
   const match = useMatchProduct();
   const link = useLinkProduct();
   const client = useQueryClient();
+
+  const identifyLive = useCallback(async (frame: string, fast = true) => {
+    const resp = await fetch('/api/product/identify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: frame, fast }),
+    });
+    if (!resp.ok) return null;
+    return resp.json();
+  }, []);
 
   const onFile = async (file: File) => {
     setImage(await fileToDataUrl(file));
@@ -1002,7 +1023,13 @@ function Scan() {
       {
         onSuccess: (result) => {
           setIdentified(result);
-          match.mutate({ data: { detectedProduct: result } }, { onSuccess: setMatches });
+          match.mutate({ data: { detectedProduct: result } }, {
+            onSuccess: (next) => {
+              setMatches(next);
+              const id = next.matches?.[0]?.passportId;
+              if (id) void fetchProductMemory(id).then(setRemembered);
+            },
+          });
         },
       }
     );
@@ -1011,10 +1038,12 @@ function Scan() {
   return (
     <div className="mx-auto max-w-[1100px]">
       <PageIntro
-        eyebrow="Scan product"
-        title="Find the record in the room."
-        description="Use a product photo to identify physical details, compare them to your registry, and link the right passport."
+        eyebrow="Camera"
+        title="See something. Verid remembers what it is."
+        description="A quiet layer — name, warranty, last place — not a noisy HUD. Live frames stay small so vision models are not wasted."
       />
+      <LiveScanHud onIdentify={identifyLive} />
+      {remembered && <CameraHint node={remembered} />}
 
       <div className="mb-8 flex items-center gap-2">
         <StepBadge active={!identified} done={Boolean(identified)} label="Capture" number="01" />
@@ -1280,7 +1309,27 @@ function PreferenceRow({ label, description, value, onChange, testId }: { label:
 
 function Router() {
   const [location] = useLocation();
-  return <ErrorBoundary resetKey={location}><Shell><Switch><Route path="/" component={Dashboard} /><Route path="/passports" component={Passports} /><Route path="/passports/:passportId" component={PassportDetail} /><Route path="/create" component={CreatePassport} /><Route path="/scan" component={Scan} /><Route path="/activity" component={ActivityPage} /><Route path="/settings" component={SettingsPage} /><Route component={NotFound} /></Switch></Shell></ErrorBoundary>;
+  return (
+    <ErrorBoundary resetKey={location}>
+      <VeridShell>
+        <Switch>
+          <Route path="/" component={HomePage} />
+          <Route path="/memory" component={MemoryPage} />
+          <Route path="/memory/:passportId" component={ProductMemoryPage} />
+          <Route path="/ask" component={AskPage} />
+          <Route path="/privacy" component={PrivacyPage} />
+          <Route path="/remember" component={CreatePassport} />
+          <Route path="/camera" component={Scan} />
+          <Route path="/create" component={CreatePassport} />
+          <Route path="/scan" component={Scan} />
+          <Route path="/passports" component={MemoryPage} />
+          <Route path="/passports/:passportId" component={ProductMemoryPage} />
+          <Route path="/settings" component={PrivacyPage} />
+          <Route component={NotFound} />
+        </Switch>
+      </VeridShell>
+    </ErrorBoundary>
+  );
 }
 
 export default function App() {

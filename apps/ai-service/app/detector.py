@@ -21,14 +21,28 @@ CUSTOM_MODEL_PATH = BASE_DIR / "models" / "custom_appliances.pt"
 COCO_MODEL_PATH = BASE_DIR / "models" / "yolo26n.pt"
 MODEL_PATH = COCO_MODEL_PATH  # Backwards compatibility
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
-OLLAMA_MODEL = os.environ.get("VISION_MODEL", "qwen2.5vl:7b")
-OLLAMA_TIMEOUT = int(os.environ.get("OLLAMA_TIMEOUT", "4"))
+from .llm import VISION_TIMEOUT, choose_vision_model, ollama_generate
 
 YOLO_CONFIDENCE = 0.20
+YOLO_LIVE_CONFIDENCE = 0.45
 YOLO_IOU = 0.45
 YOLO_IMAGE_SIZE = 640
-MIN_PRODUCT_CONFIDENCE = 0.22
+MIN_PRODUCT_CONFIDENCE = 0.40
+LIVE_CUSTOM_MIN = 0.50
+LIVE_COCO_MIN = 0.55
+STILL_CUSTOM_MIN = 0.38
+
+LIVE_SKIP_CUSTOM_PRODUCTS = {"Closet / Wardrobe", "Cot / Bed"}
+
+LIVE_COCO_CLASSES = {
+    "refrigerator": ("Refrigerator", "Home appliance"),
+    "microwave": ("Microwave Oven", "Home appliance"),
+    "oven": ("Oven", "Home appliance"),
+    "tv": ("Television", "Electronics"),
+    "laptop": ("Laptop", "Computing"),
+    "cell phone": ("Smartphone", "Electronics"),
+    "monitor": ("Monitor / Display", "Computing"),
+}
 
 # Custom fine-tuned appliance classes (trained from iQOO dataset)
 CUSTOM_CLASSES_MAP = {
@@ -174,7 +188,7 @@ def load_image_cv2(image_input) -> tuple[np.ndarray | None, int, int]:
     return None, 0, 0
 
 
-def run_custom_yolo(img: np.ndarray, width: int, height: int) -> list[dict]:
+def run_custom_yolo(img: np.ndarray, width: int, height: int, *, live: bool = False) -> list[dict]:
     """Executes the fine-tuned custom appliance YOLO model."""
     model = get_custom_yolo_model()
     if model is None:
@@ -183,7 +197,7 @@ def run_custom_yolo(img: np.ndarray, width: int, height: int) -> list[dict]:
     try:
         results = model.predict(
             source=img,
-            conf=YOLO_CONFIDENCE,
+            conf=YOLO_LIVE_CONFIDENCE if live else YOLO_CONFIDENCE,
             iou=YOLO_IOU,
             imgsz=YOLO_IMAGE_SIZE,
             verbose=False,
@@ -218,8 +232,13 @@ def run_custom_yolo(img: np.ndarray, width: int, height: int) -> list[dict]:
                 round(max(0.0, min(1.0, x2 / width)), 3),
             ]
             box_area = (norm_box[2] - norm_box[0]) * (norm_box[3] - norm_box[1])
-            prominence_boost = min(0.12, box_area * 0.15) if box_area >= 0.15 else 0.0
-            calibrated_conf = round(min(0.98, conf + prominence_boost), 2)
+            calibrated_conf = round(conf, 2)
+            if not live:
+                prominence_boost = min(0.08, box_area * 0.10) if box_area >= 0.20 else 0.0
+                calibrated_conf = round(min(0.98, conf + prominence_boost), 2)
+
+            if live and (name in LIVE_SKIP_CUSTOM_PRODUCTS or box_area < 0.08):
+                continue
 
             detections.append({
                 "product": name,
@@ -237,16 +256,19 @@ def run_custom_yolo(img: np.ndarray, width: int, height: int) -> list[dict]:
     return detections
 
 
-def run_yolo(img: np.ndarray, width: int, height: int) -> list[dict]:
+def run_yolo(img: np.ndarray, width: int, height: int, *, live: bool = False) -> list[dict]:
     """Executes general COCO foundation YOLO model."""
     model = get_yolo_model()
     if model is None:
         return []
 
+    allowed = LIVE_COCO_CLASSES if live else USEFUL_COCO_CLASSES
+    min_conf = LIVE_COCO_MIN if live else MIN_PRODUCT_CONFIDENCE
+
     try:
         results = model.predict(
             source=img,
-            conf=YOLO_CONFIDENCE,
+            conf=YOLO_LIVE_CONFIDENCE if live else YOLO_CONFIDENCE,
             iou=YOLO_IOU,
             imgsz=YOLO_IMAGE_SIZE,
             verbose=False,
@@ -269,8 +291,8 @@ def run_yolo(img: np.ndarray, width: int, height: int) -> list[dict]:
             if cls_name in REJECT_CLASSES:
                 continue
 
-            if cls_name in USEFUL_COCO_CLASSES and conf >= MIN_PRODUCT_CONFIDENCE:
-                name, cat = USEFUL_COCO_CLASSES[cls_name]
+            if cls_name in allowed and conf >= min_conf:
+                name, cat = allowed[cls_name]
                 x1, y1, x2, y2 = xyxy
                 norm_box = [
                     round(max(0.0, min(1.0, y1 / height)), 3),
@@ -279,8 +301,13 @@ def run_yolo(img: np.ndarray, width: int, height: int) -> list[dict]:
                     round(max(0.0, min(1.0, x2 / width)), 3),
                 ]
                 box_area = (norm_box[2] - norm_box[0]) * (norm_box[3] - norm_box[1])
-                prominence_boost = min(0.15, box_area * 0.20) if box_area >= 0.20 else 0.0
-                calibrated_conf = round(min(0.95, conf + prominence_boost), 2)
+                calibrated_conf = round(conf, 2)
+                if not live:
+                    prominence_boost = min(0.08, box_area * 0.10) if box_area >= 0.25 else 0.0
+                    calibrated_conf = round(min(0.95, conf + prominence_boost), 2)
+
+                if live and box_area < 0.10:
+                    continue
 
                 detections.append({
                     "product": name,
@@ -298,10 +325,12 @@ def run_yolo(img: np.ndarray, width: int, height: int) -> list[dict]:
     return detections
 
 
-def qwen_fallback(image_input) -> dict | None:
-    """Uses Qwen-VL via Ollama with strict timeout if neither YOLO detects a product."""
+def qwen_plate_read(image_input, ocr_text: str) -> dict | None:
+    """Qwen2.5-VL reads a rating plate. Fields must appear in OCR when OCR exists."""
+    model = choose_vision_model()
+    if not model:
+        return None
     try:
-        import requests
         if isinstance(image_input, (str, Path)) and os.path.exists(str(image_input)):
             with open(str(image_input), "rb") as f:
                 b64 = base64.b64encode(f.read()).decode("utf-8")
@@ -310,127 +339,156 @@ def qwen_fallback(image_input) -> dict | None:
         else:
             return None
 
-        prompt = """
-Identify the single main physical appliance or consumer product visible in this image.
-If there is NO physical appliance or consumer electronics product, return null for detectedProduct.
-Return valid JSON only:
+        prompt = """Identify the main household appliance and any model/serial printed on a rating plate.
+If a field is not clearly readable, return an empty string. Never invent codes.
+Return JSON only:
 {
-  "detectedProduct": "Product Name or null",
-  "category": "Home appliance" | "Electronics" | "Small domestic appliance" | "Computing" | "Other",
-  "brand": "Brand if clearly visible or empty string",
-  "model": "Model code if clearly visible or empty string",
-  "serialNumber": "Serial if clearly visible or empty string",
-  "confidence": 0.85,
-  "visualFeatures": ["feature 1", "feature 2"]
+  "detectedProduct": "product name or null",
+  "category": "Home appliance",
+  "brand": "",
+  "model": "",
+  "serialNumber": "",
+  "confidence": 0.7,
+  "visualFeatures": []
 }
 """
-        payload = {
-            "model": OLLAMA_MODEL,
-            "prompt": prompt,
-            "images": [b64],
-            "stream": False,
-            "options": {"temperature": 0.0},
-        }
-        resp = requests.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=OLLAMA_TIMEOUT)
-        if resp.status_code == 200:
-            text = resp.json().get("response", "")
-            start = text.find("{")
-            end = text.rfind("}")
-            if start != -1 and end != -1:
-                data = json.loads(text[start:end + 1])
-                if data.get("detectedProduct"):
-                    return data
+        data = ollama_generate(model, prompt, images=[b64], timeout=VISION_TIMEOUT, json_mode=True)
+        if not isinstance(data, dict) or not data.get("detectedProduct"):
+            return None
+        from .extractor import field_evidenced
+        if ocr_text:
+            data["brand"] = field_evidenced(data.get("brand"), ocr_text)
+            data["model"] = field_evidenced(data.get("model"), ocr_text)
+            data["serialNumber"] = field_evidenced(data.get("serialNumber") or data.get("serial_number"), ocr_text)
+        return data
     except Exception:
-        pass
-    return None
+        return None
 
 
-def detect_product_from_image(image_input) -> dict:
+def _ocr_plate_fields(image_input) -> dict:
+    try:
+        from .extractor import fallback_extraction
+        from .ocr import process_image
+
+        evidence = process_image(image_input)
+        parsed = fallback_extraction(evidence)
+        product = parsed.get("products", [{}])[0]
+        return {
+            "brand": product.get("brand") or "",
+            "model": product.get("model") or "",
+            "serialNumber": product.get("serialNumber") or "",
+            "ocr_text": evidence.get("combined_text", ""),
+        }
+    except Exception:
+        return {"brand": "", "model": "", "serialNumber": "", "ocr_text": ""}
+
+
+def _is_live_frame(width: int, height: int) -> bool:
+    return max(width, height) <= 520
+
+
+def _frame_has_structure(img: np.ndarray, *, live: bool) -> bool:
+    """Reject empty / nearly-uniform frames that custom YOLO happily mislabels."""
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    min_std = 22.0 if live else 12.0
+    min_edges = 0.018 if live else 0.008
+    if float(gray.std()) < min_std:
+        return False
+    edges = cv2.Canny(gray, 40, 120)
+    if float((edges > 0).mean()) < min_edges:
+        return False
+    return True
+
+
+def detect_product_from_image(image_input, fast: bool = False) -> dict:
     """
-    Evidence-based detection pipeline (Zero fabrication):
-    1. Runs custom-trained appliance YOLO model (AC, washing machine, water purifier, closet, cot)
-    2. Runs general COCO YOLO model (Laptop, TV, Refrigerator, Microwave, etc.)
-    3. Optional semantic Qwen2.5-VL fallback (bounded 4s timeout)
-    4. Honest zero-fabrication fallback ("Unidentified Product", confidence 0.0)
+    1. Custom YOLO (domain classes)
+    2. COCO YOLO only if custom is weak
+    3. Full stills: OCR rating plate + optional Qwen2.5-VL
+    Live/small frames skip OCR and VLM.
     """
     img, width, height = load_image_cv2(image_input)
     if img is None:
         raise ValueError("Could not decode image.")
 
-    # 1. Custom fine-tuned appliance model (highest domain specificity)
-    custom_dets = run_custom_yolo(img, width, height)
-    if custom_dets and custom_dets[0]["confidence"] >= 0.25:
-        best = custom_dets[0]
-        visual_features = [
-            f"Specialized {best['product']} detection via fine-tuned home appliance YOLO model",
-            f"Object boundary match ({int(best['confidence'] * 100)}%)",
-            f"Focal prominence: {int(best['prominence_area'] * 100)}% of frame",
-            f"Native resolution: {width}x{height}",
-        ]
+    live = fast or _is_live_frame(width, height)
+    if not _frame_has_structure(img, live=live):
         return {
-            "detectedProduct": best["product"],
-            "category": best["category"],
+            "detectedProduct": "Unidentified Product",
+            "category": "Other",
             "brand": "",
             "model": "",
             "serialNumber": "",
-            "confidence": best["confidence"],
-            "boundingBox": best["boundingBox"],
-            "visualFeatures": visual_features,
-            "source": best["source"],
+            "confidence": 0.0,
+            "boundingBox": [],
+            "visualFeatures": [
+                "Frame has too little detail to identify. Fill the view with the appliance, then try again."
+            ],
+            "source": "None",
+            "mode": "live-yolo" if live else "still",
         }
 
-    # 2. General COCO foundation model (covers Laptop, TV, Refrigerator, etc.)
-    coco_dets = run_yolo(img, width, height)
-    if coco_dets and coco_dets[0]["confidence"] >= MIN_PRODUCT_CONFIDENCE:
+    custom_dets = run_custom_yolo(img, width, height, live=live)
+    coco_dets: list[dict] = []
+    custom_floor = LIVE_CUSTOM_MIN if live else STILL_CUSTOM_MIN
+    if not custom_dets or custom_dets[0]["raw_confidence"] < (0.55 if live else 0.45):
+        coco_dets = run_yolo(img, width, height, live=live)
+
+    best = None
+    if custom_dets and custom_dets[0]["raw_confidence"] >= custom_floor:
+        best = custom_dets[0]
+    elif coco_dets and coco_dets[0]["raw_confidence"] >= (LIVE_COCO_MIN if live else MIN_PRODUCT_CONFIDENCE):
         best = coco_dets[0]
+
+    plate = {"brand": "", "model": "", "serialNumber": "", "ocr_text": ""}
+    qwen_res = None
+    if not live:
+        if best:
+            plate = _ocr_plate_fields(image_input)
+        qwen_res = qwen_plate_read(image_input, plate.get("ocr_text", ""))
+        if qwen_res:
+            plate["brand"] = plate["brand"] or str(qwen_res.get("brand") or "")
+            plate["model"] = plate["model"] or str(qwen_res.get("model") or "")
+            plate["serialNumber"] = plate["serialNumber"] or str(qwen_res.get("serialNumber") or "")
+            qname = str(qwen_res.get("detectedProduct") or "").strip()
+            if qname and qname.lower() not in {"null", "none", "unknown", "unidentified product"}:
+                return {
+                    "detectedProduct": qname,
+                    "category": str(qwen_res.get("category") or (best["category"] if best else "Home appliance")),
+                    "brand": plate.get("brand") or "",
+                    "model": plate.get("model") or "",
+                    "serialNumber": plate.get("serialNumber") or "",
+                    "confidence": float(qwen_res.get("confidence", 0.70)),
+                    "boundingBox": best["boundingBox"] if best else [0.08, 0.10, 0.86, 0.78],
+                    "visualFeatures": qwen_res.get("visualFeatures") or [
+                        "Qwen-VL identified the still (not the live YOLO HUD)",
+                    ],
+                    "source": "Qwen-VL",
+                    "mode": "qwen-vl",
+                    "yoloHint": best["product"] if best else "",
+                }
+
+    if best:
         visual_features = [
-            f"Detected {best['product'].lower()} form factor",
+            f"{best['source']} · {best['product']}",
             f"Object boundary match ({int(best['confidence'] * 100)}%)",
-            f"Aspect ratio: {width}x{height}",
+            f"{'Live frame' if live else 'Still + plate OCR'}",
         ]
+        if plate.get("serialNumber"):
+            visual_features.append("Rating-plate serial evidenced in OCR")
         return {
             "detectedProduct": best["product"],
             "category": best["category"],
-            "brand": "",
-            "model": "",
-            "serialNumber": "",
-            "confidence": best["confidence"],
+            "brand": plate.get("brand") or "",
+            "model": plate.get("model") or "",
+            "serialNumber": plate.get("serialNumber") or "",
+            "confidence": best["raw_confidence"] if live else best["confidence"],
             "boundingBox": best["boundingBox"],
             "visualFeatures": visual_features,
             "source": best["source"],
+            "mode": "live-yolo" if live else "still",
         }
 
-    # If custom had a detection with lower confidence, still better than nothing
-    if custom_dets and custom_dets[0]["confidence"] >= 0.18:
-        best = custom_dets[0]
-        return {
-            "detectedProduct": best["product"],
-            "category": best["category"],
-            "brand": "",
-            "model": "",
-            "serialNumber": "",
-            "confidence": best["confidence"],
-            "boundingBox": best["boundingBox"],
-            "visualFeatures": [f"Potential {best['product']} detected"],
-            "source": best["source"],
-        }
-
-    # 3. Quick semantic VLM fallback
-    qwen_res = qwen_fallback(image_input)
-    if qwen_res and qwen_res.get("detectedProduct"):
-        return {
-            "detectedProduct": str(qwen_res.get("detectedProduct", "Unidentified Product")),
-            "category": str(qwen_res.get("category", "Other")),
-            "brand": str(qwen_res.get("brand", "")),
-            "model": str(qwen_res.get("model", "")),
-            "serialNumber": str(qwen_res.get("serialNumber", "")),
-            "confidence": float(qwen_res.get("confidence", 0.70)),
-            "boundingBox": [0.08, 0.10, 0.86, 0.78],
-            "visualFeatures": qwen_res.get("visualFeatures", ["Visual signature recognized via AI"]),
-            "source": "Qwen-VL",
-        }
-
-    # 4. Zero fabrication fallback
     return {
         "detectedProduct": "Unidentified Product",
         "category": "Other",
@@ -439,6 +497,7 @@ def detect_product_from_image(image_input) -> dict:
         "serialNumber": "",
         "confidence": 0.0,
         "boundingBox": [],
-        "visualFeatures": ["No physical consumer appliance detected in this image."],
+        "visualFeatures": ["No appliance with enough confidence. Live camera uses YOLO only — tap Confirm with Qwen for a still." if live else "No physical consumer appliance detected in this image."],
         "source": "None",
+        "mode": "live-yolo" if live else "still",
     }
