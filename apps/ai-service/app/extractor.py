@@ -17,7 +17,7 @@ from datetime import datetime
 from PIL import Image
 
 from .ocr import process_image, load_image_from_any
-from .llm import VISION_TIMEOUT, choose_vision_model, list_ollama_models, ollama_generate
+from .llm import VISION_TIMEOUT, choose_interactive_vision_model, list_ollama_models, ollama_generate
 
 # Backwards-compatible aliases used by main.py / audit scripts
 def get_available_ollama_models() -> list[str]:
@@ -377,7 +377,7 @@ def extract_products_from_image(image_input, file_name: str = "", ocr_evidence: 
             has_strong_ocr = True
 
     # Qwen2.5-VL fills gaps (serial/model) when OCR is incomplete. Never used as the sole source.
-    vision_model = choose_vision_model() if not has_strong_ocr else None
+    vision_model = choose_interactive_vision_model() if not has_strong_ocr else None
     result = None
     ocr_text = ocr_evidence.get("combined_text", "")
 

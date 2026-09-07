@@ -21,14 +21,14 @@ CUSTOM_MODEL_PATH = BASE_DIR / "models" / "custom_appliances.pt"
 COCO_MODEL_PATH = BASE_DIR / "models" / "yolo26n.pt"
 MODEL_PATH = COCO_MODEL_PATH  # Backwards compatibility
 
-from .llm import VISION_TIMEOUT, choose_vision_model, ollama_generate
+from .llm import VISION_TIMEOUT, choose_interactive_vision_model, ollama_generate
 
 YOLO_CONFIDENCE = 0.20
 YOLO_LIVE_CONFIDENCE = 0.45
 YOLO_IOU = 0.45
 YOLO_IMAGE_SIZE = 640
 MIN_PRODUCT_CONFIDENCE = 0.40
-LIVE_CUSTOM_MIN = 0.50
+LIVE_CUSTOM_MIN = 0.40
 LIVE_COCO_MIN = 0.55
 STILL_CUSTOM_MIN = 0.38
 
@@ -327,7 +327,7 @@ def run_yolo(img: np.ndarray, width: int, height: int, *, live: bool = False) ->
 
 def qwen_plate_read(image_input, ocr_text: str) -> dict | None:
     """Qwen2.5-VL reads a rating plate. Fields must appear in OCR when OCR exists."""
-    model = choose_vision_model()
+    model = choose_interactive_vision_model()
     if not model:
         return None
     try:

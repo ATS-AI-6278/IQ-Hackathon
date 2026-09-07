@@ -121,9 +121,9 @@ export function LiveScanHud({ onIdentify }: LiveScanHudProps) {
       </div>
       <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 text-xs text-muted-foreground">
-          {overlay
+            {overlay
             ? `${overlay.detectedProduct} · ${engine}`
-            : 'Live view uses YOLO only (~150ms). It will stay blank rather than guess. For Qwen, tap Confirm still.'}
+            : 'Live view is YOLO only (~150–400ms), not Qwen. It stays blank rather than guess a washing machine on an empty room. Confirm with Qwen needs qwen2.5vl:3b — qwen3-vl:8b times out on this PC.'}
           {error && <div className="text-red-600">{error}</div>}
         </div>
         <div className="flex shrink-0 gap-2">

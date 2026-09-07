@@ -447,6 +447,9 @@ def ask_household(question: str, passports: list[dict]) -> dict:
     if not model or not records:
         fallback["gemmaModel"] = model
         return fallback
+    if float(fallback.get("confidence") or 0) >= 0.85:
+        fallback["gemmaModel"] = model
+        return fallback
 
     prompt = f"""HOUSEHOLD_RECORDS include room, locationNote, lastSeenConfidence, ageYears, missing, seller, sourceDocument.
 If location confidence is not confirmed, say so. Never invent rooms, serials, or invoices.

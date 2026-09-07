@@ -76,6 +76,25 @@ def choose_vision_model() -> str | None:
     return _pick(models, VISION_PREFS)
 
 
+def vision_model_is_interactive(model: str | None) -> bool:
+    """qwen3-vl:8b is installed here but does not finish a still within ~70s on CPU."""
+    if not model:
+        return False
+    if os.environ.get("VISION_ALLOW_HEAVY", "false").lower() in ("true", "1", "yes"):
+        return True
+    low = model.lower()
+    if "qwen3-vl" in low:
+        return False
+    if any(tag in low for tag in (":8b", ":7b", ":13b", ":32b", ":72b")):
+        return False
+    return True
+
+
+def choose_interactive_vision_model() -> str | None:
+    model = choose_vision_model()
+    return model if vision_model_is_interactive(model) else None
+
+
 def choose_gemma_model() -> str | None:
     if os.environ.get("DISABLE_OLLAMA_GEMMA", "false").lower() in ("true", "1", "yes"):
         return None

@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from .ocr import RAPIDOCR_AVAILABLE, TESSERACT_AVAILABLE, warmup_ocr
 from .detector import detect_product_from_image, get_yolo_model, get_custom_yolo_model, warmup_yolo
 from .extractor import extract_products_from_image
-from .llm import choose_gemma_model, choose_vision_model, list_ollama_models
+from .llm import choose_gemma_model, choose_interactive_vision_model, choose_vision_model, list_ollama_models
 from .household import ask_household
 
 
@@ -70,6 +70,7 @@ def health_check():
 def get_service_status():
     ollama_models = list_ollama_models()
     vision_model = choose_vision_model()
+    interactive_vision = choose_interactive_vision_model()
     gemma_model = choose_gemma_model()
     custom_model = get_custom_yolo_model()
     yolo_model = get_yolo_model()
@@ -77,12 +78,20 @@ def get_service_status():
     ocr_engine_name = "RapidOCR (ONNX)" if RAPIDOCR_AVAILABLE else ("Tesseract" if TESSERACT_AVAILABLE else "Unavailable")
     ocr_status = "connected" if (RAPIDOCR_AVAILABLE or TESSERACT_AVAILABLE) else "unavailable"
 
-    vision_status = "connected" if vision_model else ("degraded" if ollama_models else "unavailable")
-    vision_detail = (
-        f"Qwen2.5-VL via Ollama · {vision_model}"
-        if vision_model
-        else ("Ollama running but no vision model pulled (qwen2.5vl:3b or :7b)" if ollama_models else "Ollama offline — OCR/YOLO still local")
-    )
+    vision_status = "connected" if interactive_vision else ("degraded" if vision_model else ("degraded" if ollama_models else "unavailable"))
+    if interactive_vision:
+        vision_detail = f"Qwen VL via Ollama · {interactive_vision} (stills / Confirm with Qwen)"
+    elif vision_model:
+        vision_detail = (
+            f"{vision_model} is installed but too heavy for live camera or timely stills "
+            "(timed out >70s). Live HUD is YOLO only. Pull qwen2.5vl:3b for Confirm with Qwen."
+        )
+    else:
+        vision_detail = (
+            "Ollama running but no usable vision model (qwen2.5vl:3b recommended)"
+            if ollama_models
+            else "Ollama offline — OCR/YOLO still local"
+        )
 
     gemma_status = "connected" if gemma_model else ("degraded" if ollama_models else "unavailable")
     gemma_detail = (
