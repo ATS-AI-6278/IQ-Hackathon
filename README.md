@@ -8,9 +8,16 @@
 
 **Hovira is not just a product passport. It is a private AI household intelligence system that remembers, understands and helps you manage everything that matters at home.**
 
-[![🟢 Try the Live Demo](https://img.shields.io/badge/LIVE_DEMO-hovira.netlify.app-22c55e?style=for-the-badge&logo=vercel&logoColor=white)](https://hovira.netlify.app/)
-[![📄 Docs](https://img.shields.io/badge/Docs-PROJECT_DOCUMENTATION-8b5cf6?style=for-the-badge&logo=readme&logoColor=white)](PROJECT_DOCUMENTATION.md)
+[![🟢 Try the Live Demo](https://img.shields.io/badge/TRY_LIVE_DEMO-hovira.netlify.app-22c55e?style=for-the-badge&logo=vercel&logoColor=white)](https://hovira.netlify.app/)
+[![📄 Documentation](https://img.shields.io/badge/📄_Documentation-Read_More-8b5cf6?style=for-the-badge&logo=readme&logoColor=white)](PROJECT_DOCUMENTATION.md)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge&logo=apache)](LICENSE)
+
+[![Made with React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://reactjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![YOLO](https://img.shields.io/badge/YOLO-00FFFF?style=flat-square&logo=ultralytics&logoColor=black)](https://ultralytics.com)
+[![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 
 </div>
 
@@ -19,6 +26,18 @@
 ## ✨ The Big Idea in One Line
 
 Turn the clutter of home ownership — receipts, warranties, manuals, appliances — into a **living, searchable household memory** powered by private, on-device AI. Scan it once. Ask about it forever.
+
+---
+
+## 🚀 Try It Now — Live Demo
+
+<div align="center">
+
+**[▶ Open the live demo — hovira.netlify.app](https://hovira.netlify.app/)**
+
+Scan a receipt, point your camera at an appliance, watch a Digital Product Passport get minted in seconds.
+
+</div>
 
 ---
 
