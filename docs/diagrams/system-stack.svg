@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="920" viewBox="0 0 1280 920" role="img" aria-label="Hovira system stack diagram showing local perception, reasoning, memory and ownership layers with a private-by-design footer">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d1526"/>
+      <stop offset="1" stop-color="#0b1220"/>
+    </linearGradient>
+    <linearGradient id="acc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#22d3ee"/>
+    </marker>
+  </defs>
+
+  <rect width="1280" height="920" fill="url(#bg)"/>
+
+  <text x="48" y="52" fill="#f1f5f9" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="24" font-weight="700">Hovira system stack</text>
+  <text x="48" y="78" fill="#64748b" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="14">Every layer engineered for local, private household intelligence</text>
+
+  <rect x="1052" y="38" width="180" height="34" rx="17" fill="none" stroke="#22d3ee" stroke-opacity="0.4" stroke-width="1.25"/>
+  <text x="1142" y="60" text-anchor="middle" fill="#7dd3fc" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12" letter-spacing="1.5">PRIVATE BY DEFAULT</text>
+
+  <g font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif">
+    <text x="48" y="128" fill="#22d3ee" font-size="14" font-weight="600" letter-spacing="2">01 · PERCEPTION — LOCAL AI + VISION</text>
+
+    <g>
+      <rect x="56" y="146" width="372" height="150" rx="12" fill="#101a30" stroke="#24344f" stroke-width="1.25"/>
+      <rect x="56" y="146" width="6" height="150" rx="3" fill="#7c3aed"/>
+      <g stroke="#22d3ee" stroke-width="1.6" fill="none">
+        <rect x="86" y="174" width="26" height="20" rx="3"/>
+        <rect x="91" y="179" width="16" height="10" rx="1.5"/>
+        <line x1="91" y1="171" x2="91" y2="168"/><line x1="99" y1="171" x2="99" y2="168"/><line x1="107" y1="171" x2="107" y2="168"/>
+        <line x1="91" y1="197" x2="91" y2="200"/><line x1="99" y1="197" x2="99" y2="200"/><line x1="107" y1="197" x2="107" y2="200"/>
+      </g>
+      <text x="126" y="190" fill="#f1f5f9" font-size="16" font-weight="600">Custom YOLO</text>
+      <text x="86" y="226" fill="#8aa0bd" font-size="12">Fine-tuned household detector</text>
+      <text x="86" y="245" fill="#8aa0bd" font-size="12">across appliances &amp; furniture</text>
+      <text x="86" y="274" fill="#7dd3fc" font-size="12" font-weight="600">98.1% mAP@50 · instant on-device</text>
+    </g>
+
+    <g>
+      <rect x="454" y="146" width="372" height="150" rx="12" fill="#101a30" stroke="#24344f" stroke-width="1.25"/>
+      <rect x="454" y="146" width="6" height="150" rx="3" fill="#7c3aed"/>
+      <g stroke="#22d3ee" stroke-width="1.6" fill="none">
+        <ellipse cx="484" cy="184" rx="11" ry="7"/>
+        <circle cx="484" cy="184" r="3"/>
+      </g>
+      <text x="524" y="190" fill="#f1f5f9" font-size="16" font-weight="600">Qwen Vision / Qwen-VL</text>
+      <text x="484" y="226" fill="#8aa0bd" font-size="12">Local vision-language model for</text>
+      <text x="484" y="245" fill="#8aa0bd" font-size="12">description &amp; document reading</text>
+      <text x="484" y="274" fill="#7dd3fc" font-size="12" font-weight="600">runs via Ollama, fully offline</text>
+    </g>
+
+    <g>
+      <rect x="852" y="146" width="372" height="150" rx="12" fill="#101a30" stroke="#24344f" stroke-width="1.25"/>
+      <rect x="852" y="146" width="6" height="150" rx="3" fill="#7c3aed"/>
+      <g stroke="#22d3ee" stroke-width="1.6" fill="none">
+        <rect x="884" y="174" width="26" height="20" rx="3"/>
+        <line x1="890" y1="180" x2="904" y2="180"/><line x1="890" y1="186" x2="904" y2="186"/>
+        <path d="M910,176 h4 v4 M910,192 h4 v-4"/>
+      </g>
+      <text x="966" y="190" fill="#f1f5f9" font-size="16" font-weight="600">OCR Engines</text>
+      <text x="882" y="226" fill="#8aa0bd" font-size="12">RapidOCR (ONNX) + Tesseract</text>
+      <text x="882" y="245" fill="#8aa0bd" font-size="12">for invoices, receipts &amp; labels</text>
+      <text x="882" y="274" fill="#7dd3fc" font-size="12" font-weight="600">clean text, no hallucination</text>
+    </g>
+
+    <line x1="640" y1="308" x2="640" y2="356" stroke="#22d3ee" stroke-dasharray="4 5" stroke-width="2" marker-end="url(#arr)"/>
+  </g>
+
+  <g font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif">
+    <text x="48" y="390" fill="#22d3ee" font-size="14" font-weight="600" letter-spacing="2">02 · REASONING &amp; LINKAGE</text>
+
+    <g>
+      <rect x="56" y="408" width="575" height="132" rx="12" fill="#101a30" stroke="#24344f" stroke-width="1.25"/>
+      <rect x="56" y="408" width="6" height="132" rx="3" fill="#8b5cf6"/>
+      <g stroke="#22d3ee" stroke-width="1.6" fill="none">
+        <circle cx="90" cy="438" r="9"/>
+        <circle cx="111" cy="450" r="9"/>
+        <path d="M97,444 a10,10 0 0 1 8,-4 M105,454 a10,10 0 0 1 -8,4"/>
+      </g>
+      <text x="132" y="445" fill="#f1f5f9" font-size="16" font-weight="600">Semantic matching</text>
+      <text x="86" y="478" fill="#8aa0bd" font-size="12">Alias-aware product linkage across scans and passports</text>
+      <text x="86" y="496" fill="#8aa0bd" font-size="12">(washer ↔ washing machine, AC ↔ air conditioner)</text>
+      <text x="86" y="524" fill="#7dd3fc" font-size="12" font-weight="600">weighted confidence scoring on every match</text>
+    </g>
+
+    <g>
+      <rect x="649" y="408" width="575" height="132" rx="12" fill="#101a30" stroke="#24344f" stroke-width="1.25"/>
+      <rect x="649" y="408" width="6" height="132" rx="3" fill="#8b5cf6"/>
+      <g stroke="#22d3ee" stroke-width="1.6" fill="none">
+        <rect x="681" y="431" width="12" height="16" rx="2"/>
+        <rect x="697" y="431" width="12" height="16" rx="2"/>
+        <line x1="685" y1="436" x2="705" y2="436"/><line x1="685" y1="441" x2="705" y2="441"/>
+      </g>
+      <text x="727" y="445" fill="#f1f5f9" font-size="16" font-weight="600">Warranty &amp; document intelligence</text>
+      <text x="679" y="478" fill="#8aa0bd" font-size="12">Coverage, claims &amp; expiry extracted from paperwork</text>
+      <text x="679" y="496" fill="#8aa0bd" font-size="12">Auto-splits multi-product documents and normalizes fields</text>
+      <text x="679" y="524" fill="#7dd3fc" font-size="12" font-weight="600">dates · prices · currencies · serials</text>
+    </g>
+
+    <line x1="640" y1="554" x2="640" y2="602" stroke="#22d3ee" stroke-dasharray="4 5" stroke-width="2" marker-end="url(#arr)"/>
+  </g>
+
+  <g font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif">
+    <text x="48" y="638" fill="#22d3ee" font-size="14" font-weight="600" letter-spacing="2">03 · MEMORY &amp; OWNERSHIP</text>
+
+    <g>
+      <rect x="56" y="656" width="575" height="140" rx="12" fill="#101a30" stroke="#24344f" stroke-width="1.25"/>
+      <rect x="56" y="656" width="6" height="140" rx="3" fill="#22d3ee"/>
+      <g stroke="#22d3ee" stroke-width="1.6" fill="none">
+        <circle cx="90" cy="681" r="4" fill="#22d3ee"/>
+        <circle cx="112" cy="665" r="4" fill="#22d3ee"/>
+        <circle cx="112" cy="697" r="4" fill="#22d3ee"/>
+        <line x1="94" y1="680" x2="108" y2="666"/><line x1="94" y1="682" x2="108" y2="695"/>
+      </g>
+      <text x="132" y="688" fill="#f1f5f9" font-size="16" font-weight="600">Household memory · knowledge graph</text>
+      <text x="86" y="722" fill="#8aa0bd" font-size="12">Long-term context across people, rooms, items &amp; events</text>
+      <text x="86" y="740" fill="#8aa0bd" font-size="12">Each passport links into the home's living graph</text>
+      <text x="86" y="770" fill="#7dd3fc" font-size="12" font-weight="600">memory that grows with your home</text>
+    </g>
+
+    <g>
+      <rect x="649" y="656" width="575" height="140" rx="12" fill="#101a30" stroke="#22d3ee" stroke-opacity="0.55" stroke-width="1.5"/>
+      <rect x="649" y="656" width="6" height="140" rx="3" fill="#22d3ee"/>
+      <g stroke="#22d3ee" stroke-width="1.6" fill="none">
+        <rect x="681" y="668" width="22" height="16" rx="3"/>
+        <line x1="688" y1="673" x2="696" y2="673"/><line x1="688" y1="678" x2="696" y2="678"/>
+        <circle cx="692" cy="681" r="3.5" fill="#22d3ee" stroke="none"/>
+        <line x1="699" y1="674" x2="699" y2="682"/>
+      </g>
+      <text x="723" y="688" fill="#f1f5f9" font-size="16" font-weight="700">Digital Product Passport</text>
+      <text x="679" y="722" fill="#8aa0bd" font-size="12">A verifiable, private identity record for each product</text>
+      <text x="679" y="740" fill="#8aa0bd" font-size="12">Purchase proof, warranty and history in one place</text>
+      <text x="679" y="770" fill="#7dd3fc" font-size="12" font-weight="600">verified ownership without any cloud dependency</text>
+    </g>
+  </g>
+
+  <g font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif">
+    <rect x="56" y="740" width="1168" height="104" rx="16" fill="url(#acc)" fill-opacity="0.1" stroke="url(#acc)" stroke-width="1.5"/>
+    <g stroke="#a5b4fc" stroke-width="1.8" fill="none">
+      <path d="M96,772 a20,22 0 0 1 0,34 a20,22 0 0 1 0,-34 z"/>
+      <path d="M96,786 a20,22 0 0 0 0,26 M96,786 l6,-6 l5,5 l8,-9" stroke-width="1.5"/>
+    </g>
+    <text x="138" y="784" fill="#a5b4fc" font-size="15" font-weight="700" letter-spacing="1.5">LOCAL / PRIVATE AI DIRECTION</text>
+    <text x="140" y="812" fill="#cbd5e1" font-size="13">Your data stays on your devices — no cloud scanning, no training on and no sharing of household records.</text>
+  </g>
+
+  <text x="640" y="890" text-anchor="middle" fill="#53647f" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12">Hovira — private AI household intelligence · digital product passports by design</text>
+</svg>

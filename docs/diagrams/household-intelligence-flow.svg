@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="460" viewBox="0 0 1280 460" role="img" aria-label="Household intelligence flow: Product, Document, Room, Event to Household Memory to Local AI and Vision to Hovira AI to Insight and Action">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d1526"/>
+      <stop offset="1" stop-color="#0b1220"/>
+    </linearGradient>
+    <linearGradient id="nodeAcc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#22d3ee"/>
+    </marker>
+  </defs>
+
+  <rect width="1280" height="460" fill="url(#bg)"/>
+
+  <text x="48" y="58" fill="#f1f5f9" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="24" font-weight="700">Household intelligence flow</text>
+  <text x="48" y="84" fill="#64748b" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="14">From physical household signals to private, actionable insight</text>
+
+  <g font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif">
+    <g>
+      <circle cx="144" cy="202" r="17" fill="#101a30" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="144" y="208" text-anchor="middle" fill="#7dd3fc" font-size="14" font-weight="600">1</text>
+    </g>
+    <g>
+      <circle cx="392" cy="202" r="17" fill="#101a30" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="392" y="208" text-anchor="middle" fill="#7dd3fc" font-size="14" font-weight="600">2</text>
+    </g>
+    <g>
+      <circle cx="640" cy="202" r="17" fill="#101a30" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="640" y="208" text-anchor="middle" fill="#7dd3fc" font-size="14" font-weight="600">3</text>
+    </g>
+    <g>
+      <circle cx="888" cy="202" r="17" fill="#101a30" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="888" y="208" text-anchor="middle" fill="#7dd3fc" font-size="14" font-weight="600">4</text>
+    </g>
+    <g>
+      <circle cx="1136" cy="202" r="17" fill="url(#nodeAcc)" stroke="none"/>
+      <text x="1136" y="208" text-anchor="middle" fill="#081018" font-size="14" font-weight="700">5</text>
+    </g>
+  </g>
+
+  <g>
+    <rect x="42" y="230" width="204" height="122" rx="12" fill="#101a30" stroke="#24344f" stroke-width="1.25"/>
+    <text x="144" y="262" text-anchor="middle" fill="#f1f5f9" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="15.5" font-weight="600">Product / Document</text>
+    <text x="144" y="282" text-anchor="middle" fill="#f1f5f9" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="15.5" font-weight="600">Room / Event</text>
+    <line x1="94" y1="300" x2="194" y2="300" stroke="#24344f" stroke-width="1"/>
+    <text x="144" y="320" text-anchor="middle" fill="#8aa0bd" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12">Products, paperwork,</text>
+    <text x="144" y="337" text-anchor="middle" fill="#8aa0bd" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12">rooms &amp; daily events</text>
+  </g>
+
+  <g>
+    <rect x="290" y="230" width="204" height="122" rx="12" fill="#101a30" stroke="#24344f" stroke-width="1.25"/>
+    <text x="392" y="268" text-anchor="middle" fill="#f1f5f9" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="15.5" font-weight="600">Household</text>
+    <text x="392" y="288" text-anchor="middle" fill="#f1f5f9" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="15.5" font-weight="600">Memory</text>
+    <line x1="342" y1="306" x2="442" y2="306" stroke="#24344f" stroke-width="1"/>
+    <text x="392" y="326" text-anchor="middle" fill="#8aa0bd" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12">Knowledge graph of</text>
+    <text x="392" y="343" text-anchor="middle" fill="#8aa0bd" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12">people, items &amp; history</text>
+  </g>
+
+  <g>
+    <rect x="538" y="230" width="204" height="122" rx="12" fill="#101a30" stroke="#24344f" stroke-width="1.25"/>
+    <text x="640" y="268" text-anchor="middle" fill="#f1f5f9" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="15.5" font-weight="600">Local AI +</text>
+    <text x="640" y="288" text-anchor="middle" fill="#f1f5f9" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="15.5" font-weight="600">Vision</text>
+    <line x1="590" y1="306" x2="690" y2="306" stroke="#24344f" stroke-width="1"/>
+    <text x="640" y="326" text-anchor="middle" fill="#8aa0bd" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12">YOLO, Qwen-VL &amp; OCR</text>
+    <text x="640" y="343" text-anchor="middle" fill="#8aa0bd" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12">running offline on-device</text>
+  </g>
+
+  <g>
+    <rect x="786" y="230" width="204" height="122" rx="12" fill="#101a30" stroke="#24344f" stroke-width="1.25"/>
+    <text x="888" y="268" text-anchor="middle" fill="#f1f5f9" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="15.5" font-weight="600">Hovira</text>
+    <text x="888" y="288" text-anchor="middle" fill="#f1f5f9" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="15.5" font-weight="600">AI</text>
+    <line x1="838" y1="306" x2="938" y2="306" stroke="#24344f" stroke-width="1"/>
+    <text x="888" y="326" text-anchor="middle" fill="#8aa0bd" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12">Reasoning, matching &amp;</text>
+    <text x="888" y="343" text-anchor="middle" fill="#8aa0bd" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12">document understanding</text>
+  </g>
+
+  <g>
+    <rect x="1034" y="230" width="204" height="122" rx="12" fill="url(#nodeAcc)" fill-opacity="0.15" stroke="#22d3ee" stroke-width="1.5"/>
+    <text x="1136" y="268" text-anchor="middle" fill="#f8fafc" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="15.5" font-weight="700">Insight /</text>
+    <text x="1136" y="288" text-anchor="middle" fill="#f8fafc" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="15.5" font-weight="700">Action</text>
+    <line x1="1086" y1="306" x2="1186" y2="306" stroke="#22d3ee" stroke-opacity="0.5" stroke-width="1"/>
+    <text x="1136" y="326" text-anchor="middle" fill="#a5d8ef" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12">Reminders, alerts &amp;</text>
+    <text x="1136" y="343" text-anchor="middle" fill="#a5d8ef" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12">useful answers</text>
+  </g>
+
+  <g stroke="#22d3ee" stroke-width="2.5" fill="none" marker-end="url(#arr)">
+    <line x1="250" y1="291" x2="284" y2="291"/>
+    <line x1="498" y1="291" x2="532" y2="291"/>
+    <line x1="746" y1="291" x2="780" y2="291"/>
+    <line x1="994" y1="291" x2="1028" y2="291"/>
+  </g>
+
+  <text x="48" y="424" fill="#50637f" font-family="'Segoe UI', system-ui, -apple-system, Arial, sans-serif" font-size="12.5">Designed to run locally — no cloud scanning or sharing of your household data.</text>
+</svg>

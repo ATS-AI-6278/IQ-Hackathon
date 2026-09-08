@@ -1,148 +1,249 @@
-# Verid - Digital Product Passport Platform
+<div align="center">
 
-A unified, production-ready enterprise platform for creating, verifying, and matching digital product passports from physical documents and products using AI computer vision and optical character recognition.
+<img src="docs/images/hovira-hero.png" alt="Hovira - Household Intelligence OS" width="100%" />
 
----
+# **Hovira**
 
-## Architecture Overview
+### Your phone remembers everything you own.
 
-```
-c:\Users\acer\Pictures\IQ\
-├── apps/
-│   ├── web/                     # React 19 + Tailwind CSS frontend application
-│   │   ├── src/
-│   │   │   ├── components/      # UI components & Error Boundary
-│   │   │   ├── pages/           # Dashboard, Passports, Create, Scan, Activity, Settings
-│   │   │   └── App.tsx          # Navigation, state, and router
-│   │   └── vite.config.ts       # Vite configuration with API proxy
-│   │
-│   ├── api/                     # Node.js Express 5 API server
-│   │   ├── src/
-│   │   │   ├── routes/          # Passports, Products, Activity, System status
-│   │   │   ├── services/        # AI document analysis & product identification
-│   │   │   ├── lib/             # Passport store & Python AI client bridge
-│   │   │   └── app.ts           # Express configuration & 50MB payload limits
-│   │   └── build.mjs            # Production esbuild bundler
-│   │
-│   └── ai-service/              # Python AI / ML microservice & CLI bridge
-│       ├── app/
-│       │   ├── main.py          # FastAPI application (/analyze-document, /identify-product, /status)
-│       │   ├── detector.py      # Dual-engine YOLO (custom + COCO) + Qwen-VL fallback
-│       │   ├── extractor.py     # Document understanding & anti-hallucination selection
-│       │   ├── ocr.py           # RapidOCR (ONNX) + Tesseract text engine
-│       │   └── runner.py        # CLI execution bridge
-│       ├── models/
-│       │   ├── custom_appliances.pt # Fine-tuned YOLO (98.1% mAP@50 on AC, Washer, Closet, Purifier, Cot)
-│       │   └── yolo26n.pt       # COCO Foundation YOLO weights
-│       ├── requirements.txt     # Python dependencies
-│       └── test_ai.py           # AI test suite
-│
-├── Model/                       # Custom YOLO Training & Dataset Pipeline
-│   ├── dataset/                 # 292 unified & clamped 5-class annotated dataset
-│   ├── prepare_dataset.py       # Dataset stratification and verification
-│   ├── train_yolo.py            # Automated training script (25 epochs, 98.1% mAP)
-│   └── evaluate_model.py        # Validation split & live sample evaluator
-│
-├── packages/
-│   ├── api-spec/                # OpenAPI 3.1 schema specification
-│   ├── api-zod/                 # Generated Zod validation schemas & TypeScript types
-│   └── api-client-react/        # React Query hooks for frontend
-│
-└── samples/                     # Test invoices, warranty cards, and appliance photos
-```
+An AI-powered **Household Intelligence OS** that turns scattered receipts and forgotten appliance manuals into a living, searchable household memory graph.
 
-> 📖 **Complete Technical Documentation**: See [PROJECT_DOCUMENTATION.md](file:///c:/Users/acer/Pictures/IQ/PROJECT_DOCUMENTATION.md) for full architecture specs, model evaluation metrics, and hackathon evaluation guides.
+[![Live Demo](https://img.shields.io/badge/Live_Demo-hovira.netlify.app-22c55e?style=for-the-badge&logo=vercel&logoColor=white)](https://hovira.netlify.app/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
+
+</div>
 
 ---
 
-## Core Capabilities & AI Workflows
+## The Problem
 
-1. **Document Analysis (`/api/passport/analyze-document`)**:
-   - Accepts uploaded invoices, receipts, and warranty cards (JPG, PNG, PDF).
-   - Preprocesses images with contrast enhancement, unsharp masking, and LANCZOS upscaling.
-   - Extracts text via RapidOCR (ONNX) or Tesseract.
-   - Applies deep document understanding via Qwen2.5-VL / Ollama with strict anti-hallucination rules.
-   - Gracefully falls back to high-fidelity regex/heuristic extraction if Ollama is offline.
-   - Normalizes purchase dates, prices, currencies, and separates multi-product documents.
-
-2. **Physical Product Identification (`/api/product/identify`)**:
-   - Processes photos taken with mobile camera or uploaded.
-   - Runs **fine-tuned custom YOLO** (`models/custom_appliances.pt`) for specialized household items (**Air Conditioner, Washing Machine, Closet / Wardrobe, Water Purifier, Cot / Bed**) at **98.1% mAP@50** and **<100ms CPU latency**.
-   - Falls back to general COCO YOLO (`models/yolo26n.pt`) for electronics (Laptop, TV, Refrigerator, Microwave, Smartphone).
-   - Employs bounded Qwen2.5-VL vision semantic fallback if neither YOLO detects a candidate.
-   - Generates normalized bounding box coordinates and authentic visual features without hallucination.
-
-3. **Product Matching & Linking (`/api/product/match` & `/api/passport/:id/link-product`)**:
-   - Compares detected physical attributes against existing passports with semantic product alias mapping (`washer` <-> `washing machine`, `ac` <-> `air conditioner`, `almirah` <-> `closet`).
-   - Computes weighted match confidence scores and links physical scans to source evidence.
-
-4. **Service Health Monitoring (`/api/system/status`)**:
-   - Live health checks for Passport API, OCR Engine, Vision Model (Ollama), and Product Detection (YOLO).
+Household ownership is broken. Purchase receipts rot in drawers. Warranty cards expire unclaimed. Appliance manuals vanish the moment you need them. Every family manages dozens of products with zero digital structure -- losing money on missed warranties and wasting hours hunting for information that should be instant.
 
 ---
 
-## Quick Start
+## The Solution
+
+Hovira transforms your phone into a household intelligence hub. Upload a photo of any receipt, invoice, or warranty card and Hovira's AI extracts every detail -- date, price, serial number, warranty window. Point your camera at any appliance and a fine-tuned computer vision model identifies it in under 100ms. Everything links into a unified **Household Product Graph** you can search, query, and act on.
+
+---
+
+## Why Hovira is Different
+
+| Traditional Approach | Hovira |
+|---|---|
+| Store files in folders and forget them | AI extracts and structures data automatically |
+| Manual data entry | OCR + Vision AI does the work |
+| Generic cloud storage | Household-specific product graph |
+| No physical product link | Camera identifies appliances and links them to documents |
+| Reactive (find out warranty expired too late) | Proactive alerts and maintenance scheduling |
+
+---
+
+## Core AI Architecture
+
+<div align="center">
+<img src="docs/images/architecture.png" alt="Hovira System Architecture" width="90%" />
+</div>
+
+Hovira runs a **three-service architecture** orchestrated as a monorepo:
+
+- **Python AI Microservice** (FastAPI, port 8000) -- YOLO detection, OCR extraction, document understanding
+- **Node.js API Gateway** (Express 5, port 5000) -- routing, validation, passport management
+- **React Frontend** (Vite, port 5173) -- dashboard, scanner, passport viewer
+
+---
+
+## Key Features
+
+- **Dual-Evidence Intake** -- Upload commercial documents AND physical product photos
+- **Custom YOLO Detector** -- Fine-tuned on 5 household appliance classes at **98.1% mAP@50**
+- **Zero-Fabrication Extraction** -- Anti-hallucination OCR with strict provenance tracking
+- **Cryptographic DPP Certificates** -- SHA-256 sealed Digital Product Passports with EU Ecodesign compliance markers
+- **Phone-First QR Bridge** -- Instant mobile camera access with zero app installation
+- **1-Click Demo Presets** -- Pre-loaded scenarios for instant evaluation
+
+---
+
+## How It Works
+
+<div align="center">
+<img src="docs/images/how-it-works.png" alt="How Hovira Works" width="90%" />
+</div>
+
+**Scan → Identify → Create Passport → Attach Documents → Build Household Memory → Ask Hovira → Get grounded insight**
+
+**4 steps from photo to verified product passport:**
+
+1. **Upload** -- Snap a photo of a receipt/invoice and a photo of the physical appliance
+2. **Extract** -- AI pulls purchase date, price, serial number, warranty terms via OCR + document understanding
+3. **Detect** -- Custom YOLO identifies the appliance class, draws verified bounding boxes, computes confidence scores
+4. **Mint** -- A cryptographic DPP certificate is generated linking commercial evidence to physical proof
+
+---
+
+## Why This Matters
+
+Hovira begins as a **Digital Product Passport** platform -- the kind the EU is mandating for consumer electronics -- but its true trajectory is **Private AI Household Intelligence**. Every receipt scanned, every appliance photographed, every warranty tracked adds a node to a household graph that no cloud service has access to. Your data stays local. Your intelligence compounds. Over time, Hovira evolves from a document tool into a household operating system that knows what you own, when it needs attention, and what it's worth.
+
+---
+
+## Future Vision
+
+> The following capabilities are **not yet implemented**. They represent the planned evolution of Hovira into a full Household Intelligence OS.
+
+| Capability | Description |
+|---|---|
+| **Spatial Memory** | Map products and documents to physical rooms and locations within your home |
+| **Point-and-Ask Camera** | Real-time AR HUD overlay showing warranty status and health when pointing at any appliance |
+| **Context & Season-Aware Intelligence** | Proactive advice that adapts to weather, seasons, and usage patterns (e.g., pre-summer AC servicing) |
+| **Attention Center** | Priority-ranked dashboard: critical alerts, upcoming maintenance, consumable replacements |
+| **Maintenance Intelligence** | Lifecycle event engine tracking installation, service history, consumable wear, and expiration countdowns |
+| **AI Manual Assistant** | RAG-powered Q&A over uploaded appliance manuals -- ask "How do I clean the drain filter?" and get exact steps |
+| **Household Timeline** | Chronological view of every purchase, service visit, and warranty event across all products |
+| **Local / Offline Intelligence** | Full on-device pipeline via edge NPU -- zero cloud dependency, zero data leakage |
+
+---
+
+## Technology Stack
+
+| Layer | Technologies |
+|---|---|
+| **Frontend** | React 19, Tailwind CSS v4, Vite 7, TanStack Query v5, Wouter, Framer Motion, Lucide Icons |
+| **API Gateway** | Node.js, Express 5, Pino Logger, CORS |
+| **AI / ML** | Ultralytics YOLO, RapidOCR (ONNX), PyTorch, OpenCV, FastAPI, Uvicorn |
+| **Vision Fallback** | Ollama (Qwen2.5-VL) for deep document understanding |
+| **API Spec** | OpenAPI 3.1, Zod validation, Orval code generation |
+| **Monorepo** | pnpm workspaces, esbuild, concurrently |
+| **Deployment** | Netlify (frontend), local development (API + AI services) |
+
+---
+
+## Current Implementation vs. Future Vision
+
+| Capability | Status |
+|---|---|
+| Document OCR extraction (invoices, receipts, warranties) | **Implemented** |
+| Custom YOLO appliance detection (5 classes, 98.1% mAP) | **Implemented** |
+| Cryptographic DPP certificate generation | **Implemented** |
+| Phone QR bridge for mobile camera access | **Implemented** |
+| Anti-hallucination extraction with provenance | **Implemented** |
+| 1-click judge demo presets | **Implemented** |
+| Service health monitoring dashboard | **Implemented** |
+| "Ask My House" natural language interface | Future |
+| Point-and-Ask AR camera mode | Future |
+| Spatial room mapping | Future |
+| Season-aware proactive intelligence | Future |
+| Attention/priority center | Future |
+| Maintenance lifecycle engine | Future |
+| AI manual RAG assistant | Future |
+| Offline edge-NPU pipeline | Future |
+
+---
+
+## Getting Started
 
 ### Prerequisites
-- Node.js v18+ (Node v24 recommended)
-- pnpm v9+ (v11 recommended)
-- Python 3.10+ with packages in `apps/ai-service/requirements.txt`
 
-### 1. Install Dependencies
+- **Node.js** v18+ (v24 recommended)
+- **pnpm** v9+ (v11 recommended)
+- **Python** 3.10+ with pip
+
+### Install Dependencies
+
 ```bash
-# Node dependencies
+# Node dependencies (monorepo)
 pnpm install
 
-# Python dependencies (if not already installed)
+# Python AI service dependencies
 pip install -r apps/ai-service/requirements.txt
 ```
 
-### 2. Run All Services in Development Mode
+### Run All Services
 
-#### 🚀 Option A: Run All 3 Simultaneously in ONE Command (Recommended)
 ```bash
+# Start AI service (port 8000), API gateway (port 5000), and web UI (port 5173) in parallel
 pnpm dev:all
-# or
-pnpm start:all
 ```
-*(Or simply double-click `run.bat` or run `.\run.ps1` in PowerShell)*
 
-#### Option B: Run in Separate Terminals
+Or on Windows, double-click `run.bat`.
+
+### Run Individually
+
 ```bash
-# Terminal 1: Python AI Service (Port 8000)
-pnpm dev:ai
-
-# Terminal 2: Node API Server (Port 5000)
-pnpm dev:api
-
-# Terminal 3: Web UI (Port 5173, with proxy to :5000)
-pnpm dev:web
+pnpm dev:ai     # Python AI Microservice
+pnpm dev:api    # Node.js API Gateway
+pnpm dev:web    # React Frontend
 ```
 
-### 3. Build for Production
+### Build for Production
 
 ```bash
 pnpm build
 ```
 
-### 4. Run Automated Tests
+### Run Tests
 
 ```bash
-# Test Python AI pipeline (YOLO + OCR + Extractor)
-pnpm test:ai
-
-# Test End-to-End API Integration
-python test_e2e.py
-
-# Monorepo TypeScript check
-pnpm typecheck
+pnpm test:ai        # Python AI pipeline (YOLO + OCR + Extractor)
+pnpm test:suite     # REST API integration tests
+pnpm typecheck      # TypeScript type checking
 ```
 
 ---
 
-## Technologies Used
+## Project Structure
 
-- **Frontend**: React 19, Tailwind CSS v4, Lucide Icons, TanStack Query v5, Wouter, Framer Motion
-- **Backend**: Node.js, Express 5, Pino Logger, CORS
-- **AI / ML**: Ultralytics YOLO (`yolo26n.pt`), RapidOCR (ONNX), PyTorch, TorchVision, OpenCV, PIL, Ollama (Qwen2.5-VL), FastAPI, Uvicorn
-- **API Specification & Validation**: OpenAPI 3.1, Zod, Orval
+```
+hovira/
+├── apps/
+│   ├── web/                 # React 19 + Tailwind CSS frontend
+│   ├── api/                 # Express 5 API gateway
+│   └── ai-service/          # Python FastAPI AI microservice
+│       ├── app/
+│       │   ├── main.py      # FastAPI routes
+│       │   ├── detector.py  # YOLO dual-engine detection
+│       │   ├── extractor.py # Document understanding
+│       │   └── ocr.py       # RapidOCR + Tesseract
+│       └── models/          # Custom + COCO YOLO weights
+├── packages/
+│   ├── api-spec/            # OpenAPI 3.1 schema
+│   ├── api-zod/             # Zod validation schemas
+│   └── api-client-react/    # React Query hooks
+├── Model/                   # YOLO training pipeline & dataset
+├── samples/                 # Test invoices, receipts, appliance photos
+└── docs/
+    ├── images/              # Hero, architecture, how-it-works visuals
+    └── diagrams/            # System stack & flow diagrams
+```
+
+---
+
+## Links
+
+- **Live Demo:** [hovira.netlify.app](https://hovira.netlify.app/)
+- **Repository:** [github.com/ATS-AI-6278/IQ-Hackathon](https://github.com/ATS-AI-6278/IQ-Hackathon)
+- **Technical Documentation:** [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md)
+
+---
+
+## Screenshots
+
+| Dashboard | Create Passport | Scanner |
+|:---------:|:---------------:|:-------:|
+| ![Dashboard](docs/screenshots/home.png) | ![Create Passport](docs/screenshots/create-passport.png) | ![Scanner](docs/screenshots/scanner.png) |
+
+| Ask Hovira | Product Scan | AI Insight | Mobile Scan |
+|:----------:|:------------:|:----------:|:-----------:|
+| ![Ask Hovira](docs/screenshots/ask-hovira.png) | ![Product Scan](docs/screenshots/product-scan.png) | ![AI Insight](docs/screenshots/ai-insight.png) | ![Mobile Scan](docs/screenshots/mobile-scan.png) |
+
+> Screenshots are from the current demo. Replace with actual UI captures as the product evolves.
+
+---
+
+<div align="center">
+
+**Hovira** -- From scattered papers to household intelligence.
+
+Licensed under [Apache 2.0](LICENSE)
+
+</div>
