@@ -300,7 +300,14 @@ def run_yolo(img: np.ndarray, width: int, height: int, *, live: bool = False) ->
                     round(max(0.0, min(1.0, y2 / height)), 3),
                     round(max(0.0, min(1.0, x2 / width)), 3),
                 ]
-                box_area = (norm_box[2] - norm_box[0]) * (norm_box[3] - norm_box[1])
+                box_h = max(0.001, norm_box[2] - norm_box[0])
+                box_w = max(0.001, norm_box[3] - norm_box[1])
+                # Dark UI sidebars / door frames get labelled "cell phone"
+                if cls_name == "cell phone" and box_h > 0.72 and box_w < 0.45:
+                    continue
+                if live and cls_name in {"cell phone", "tv", "monitor"} and (norm_box[1] < 0.04 or norm_box[1] + box_w > 0.96) and box_h > 0.65:
+                    continue
+                box_area = box_h * box_w
                 calibrated_conf = round(conf, 2)
                 if not live:
                     prominence_boost = min(0.08, box_area * 0.10) if box_area >= 0.25 else 0.0
